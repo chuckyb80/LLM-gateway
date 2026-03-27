@@ -9,13 +9,40 @@
  * a full O(n) scan of multi-MB payloads.
  */
 export function mightBeCompleteJson(str: string): boolean {
-	const trimmed = str.trim();
-	if (trimmed.length === 0) {
+	if (str.length === 0) {
 		return false;
 	}
 
-	const firstChar = trimmed[0];
-	const lastChar = trimmed[trimmed.length - 1];
+	// Find first and last non-whitespace characters without calling .trim(),
+	// which would allocate a full copy of multi-MB strings.
+	let start = 0;
+	while (
+		start < str.length &&
+		(str[start] === " " ||
+			str[start] === "\t" ||
+			str[start] === "\n" ||
+			str[start] === "\r")
+	) {
+		start++;
+	}
+	if (start === str.length) {
+		return false;
+	}
+
+	let end = str.length - 1;
+	while (
+		end > start &&
+		(str[end] === " " ||
+			str[end] === "\t" ||
+			str[end] === "\n" ||
+			str[end] === "\r")
+	) {
+		end--;
+	}
+
+	const firstChar = str[start];
+	const lastChar = str[end];
+	const trimmedLength = end - start + 1;
 
 	// Quick check: must start with { or [ and end with } or ]
 	if (firstChar === "{") {
@@ -41,18 +68,18 @@ export function mightBeCompleteJson(str: string): boolean {
 	// Above this, payloads almost always contain large opaque string values
 	// (base64 images, long text) where scanning every character is wasteful.
 	const LARGE_PAYLOAD_THRESHOLD = 100 * 1024;
-	if (trimmed.length > LARGE_PAYLOAD_THRESHOLD) {
-		return mightBeCompleteJsonLarge(trimmed);
+	if (trimmedLength > LARGE_PAYLOAD_THRESHOLD) {
+		return mightBeCompleteJsonLarge(str, start, end);
 	}
 
 	// Count brackets/braces, skipping content inside strings
 	let braces = 0;
 	let brackets = 0;
 	let inString = false;
-	let i = 0;
+	let i = start;
 
-	while (i < trimmed.length) {
-		const c = trimmed[i];
+	while (i <= end) {
+		const c = str[i];
 
 		if (inString) {
 			if (c === "\\") {
@@ -96,19 +123,25 @@ export function mightBeCompleteJson(str: string): boolean {
  *
  * This turns an O(n) scan into O(k) where k is the size of the structural
  * JSON skeleton (typically a few hundred bytes even for multi-MB payloads).
+ *
+ * Accepts start/end indices to avoid creating a trimmed copy of the string.
  */
-function mightBeCompleteJsonLarge(trimmed: string): boolean {
+function mightBeCompleteJsonLarge(
+	str: string,
+	start: number,
+	end: number,
+): boolean {
 	const SCAN_LIMIT = 8192; // scan at most 8KB from each end
 
 	// Forward scan: count structural depth until we enter a long string
 	let fBraces = 0;
 	let fBrackets = 0;
 	let inString = false;
-	let i = 0;
-	const forwardEnd = Math.min(trimmed.length, SCAN_LIMIT);
+	let i = start;
+	const forwardEnd = Math.min(end + 1, start + SCAN_LIMIT);
 
 	while (i < forwardEnd) {
-		const c = trimmed[i];
+		const c = str[i];
 		if (inString) {
 			if (c === "\\") {
 				i += 2;
@@ -133,7 +166,7 @@ function mightBeCompleteJsonLarge(trimmed: string): boolean {
 	}
 
 	// If we finished scanning the entire string (unlikely given >100KB), use result directly
-	if (i >= trimmed.length) {
+	if (i > end) {
 		return !inString && fBraces === 0 && fBrackets === 0;
 	}
 
@@ -156,17 +189,17 @@ function mightBeCompleteJsonLarge(trimmed: string): boolean {
 	let rBraces = 0;
 	let rBrackets = 0;
 	let rInString = false;
-	let j = trimmed.length - 1;
-	const reverseEnd = Math.max(0, trimmed.length - SCAN_LIMIT);
+	let j = end;
+	const reverseEnd = Math.max(start, end - SCAN_LIMIT + 1);
 
 	while (j >= reverseEnd) {
-		const c = trimmed[j];
+		const c = str[j];
 		if (rInString) {
 			// Inside a string scanning backward - check for unescaped quote
 			if (c === '"') {
 				let backslashes = 0;
 				let k = j - 1;
-				while (k >= 0 && trimmed[k] === "\\") {
+				while (k >= start && str[k] === "\\") {
 					backslashes++;
 					k--;
 				}
@@ -176,7 +209,7 @@ function mightBeCompleteJsonLarge(trimmed: string): boolean {
 			}
 			// Once we enter the large string going backward, we've accounted for
 			// all the closing structure. Stop scanning.
-			if (rInString && j < trimmed.length - SCAN_LIMIT + 1) {
+			if (rInString && j < end - SCAN_LIMIT + 2) {
 				// We're deep in the string and past our scan limit - stop
 				break;
 			}

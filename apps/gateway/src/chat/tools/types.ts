@@ -8,10 +8,14 @@ export interface ChatMessage {
 }
 
 // Define OpenAI-compatible image object type
+// Internal _mime and _base64 fields allow deferred URL construction
+// to avoid multi-MB string copies during streaming.
 export interface ImageObject {
 	type: "image_url";
 	image_url: {
 		url: string;
+		_mime?: string;
+		_base64?: string;
 	};
 }
 

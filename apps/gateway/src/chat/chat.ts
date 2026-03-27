@@ -112,6 +112,7 @@ import {
 	selectNextProvider,
 	shouldRetryRequest,
 } from "./tools/retry-with-fallback.js";
+import { serializeStreamingChunk } from "./tools/serialize-streaming-chunk.js";
 import {
 	encodeChatMessages,
 	messageContentToString,
@@ -2461,6 +2462,9 @@ chat.openapi(completions, async (c) => {
 				let firstReasoningTokenReceived = false;
 
 				// Helper function to write SSE and capture for cache
+				// Large payload threshold: skip debug string copies for payloads > 64KB
+				// to avoid multi-MB string allocations in the hot path
+				const LARGE_SSE_THRESHOLD = 65536;
 				const writeSSEAndCache = async (sseData: {
 					data: string;
 					event?: string;
@@ -2468,9 +2472,11 @@ chat.openapi(completions, async (c) => {
 				}) => {
 					await stream.writeSSE(sseData);
 
-					// Collect raw response data for logging only in debug mode and within size limit
+					// Collect raw response data for logging only in debug mode and within size limit.
+					// Skip large payloads (e.g. base64 image data) to avoid multi-MB string copies.
 					if (
 						debugMode &&
+						sseData.data.length < LARGE_SSE_THRESHOLD &&
 						streamingRawResponseData.length < MAX_RAW_DATA_SIZE
 					) {
 						const sseString = `${sseData.event ? `event: ${sseData.event}\n` : ""}data: ${sseData.data}${sseData.id ? `\nid: ${sseData.id}` : ""}\n\n`;
@@ -3513,8 +3519,13 @@ chat.openapi(completions, async (c) => {
 						}
 
 						buffer += chunk;
-						// Collect raw upstream data for logging only in debug mode and within size limit
-						if (debugMode && rawUpstreamData.length < MAX_RAW_DATA_SIZE) {
+						// Collect raw upstream data for logging only in debug mode and within size limit.
+						// Skip large chunks (e.g. base64 image data) to avoid multi-MB string copies.
+						if (
+							debugMode &&
+							chunk.length < LARGE_SSE_THRESHOLD &&
+							rawUpstreamData.length < MAX_RAW_DATA_SIZE
+						) {
 							rawUpstreamData += chunk;
 						}
 
@@ -3617,10 +3628,10 @@ chat.openapi(completions, async (c) => {
 								const firstNewline = betweenEvents.indexOf("\n");
 
 								if (firstNewline !== -1) {
-									// Check if JSON up to first newline is valid
-									const jsonCandidate = betweenEvents
-										.slice(0, firstNewline)
-										.trim();
+									// Check if JSON up to first newline is valid.
+									// Skip .trim() — mightBeCompleteJson handles whitespace
+									// internally without allocating a copy.
+									const jsonCandidate = betweenEvents.slice(0, firstNewline);
 									// Quick heuristic check before expensive JSON.parse
 									let isValidJson = false;
 									if (mightBeCompleteJson(jsonCandidate)) {
@@ -3651,10 +3662,13 @@ chat.openapi(completions, async (c) => {
 								// Try to find the end of the JSON data by looking for the closing brace
 								const newlinePos = bufferCopy.indexOf("\n", eventStartPos);
 								if (newlinePos !== -1) {
-									// We found a newline - check if the JSON before it is valid
-									const jsonCandidate = bufferCopy
-										.slice(eventStartPos, newlinePos)
-										.trim();
+									// We found a newline - check if the JSON before it is valid.
+									// Skip .trim() — mightBeCompleteJson handles whitespace
+									// internally without allocating a copy.
+									const jsonCandidate = bufferCopy.slice(
+										eventStartPos,
+										newlinePos,
+									);
 									// Quick heuristic check before expensive JSON.parse
 									let isValidJson = false;
 									if (mightBeCompleteJson(jsonCandidate)) {
@@ -3724,11 +3738,12 @@ chat.openapi(completions, async (c) => {
 									// Try to detect if we have a complete JSON object
 									const eventDataCandidate = bufferCopy.slice(eventStartPos);
 									if (eventDataCandidate.length > 0) {
-										// Quick heuristic check before expensive JSON.parse
-										const trimmedCandidate = eventDataCandidate.trim();
-										if (mightBeCompleteJson(trimmedCandidate)) {
+										// Quick heuristic check before expensive JSON.parse.
+										// mightBeCompleteJson handles its own whitespace scanning
+										// without allocating a trimmed copy.
+										if (mightBeCompleteJson(eventDataCandidate)) {
 											try {
-												JSON.parse(trimmedCandidate);
+												JSON.parse(eventDataCandidate);
 												// If we can parse it, it's complete
 												eventEnd = bufferCopy.length;
 											} catch {
@@ -3746,9 +3761,15 @@ chat.openapi(completions, async (c) => {
 								}
 							}
 
-							const eventData = bufferCopy
-								.slice(dataIndex + 6, eventEnd)
-								.trim();
+							// For small payloads, trim whitespace normally.
+							// For large payloads (>64KB, e.g. base64 image data), skip .trim()
+							// to avoid allocating a second multi-MB string copy.
+							// JSON.parse handles leading/trailing whitespace fine.
+							const rawEventData = bufferCopy.slice(dataIndex + 6, eventEnd);
+							const eventData =
+								rawEventData.length < LARGE_SSE_THRESHOLD
+									? rawEventData.trim()
+									: rawEventData;
 
 							// Debug logging for troublesome events
 							// Only scan for SSE field contamination on small events to avoid
@@ -4034,13 +4055,18 @@ chat.openapi(completions, async (c) => {
 									}
 								}
 
-								// For Google providers, add usage information when available
+								// For Google providers, extract usage early so we can both
+								// add it to the streaming chunk and reuse it later for tracking
+								// (avoiding a redundant extractTokenUsage call).
+								let googleUsageResult: ReturnType<
+									typeof extractTokenUsage
+								> | null = null;
 								if (
 									usedProvider === "google-ai-studio" ||
 									usedProvider === "google-vertex" ||
 									usedProvider === "obsidian"
 								) {
-									const usage = extractTokenUsage(
+									googleUsageResult = extractTokenUsage(
 										data,
 										usedProvider,
 										fullContent,
@@ -4049,16 +4075,17 @@ chat.openapi(completions, async (c) => {
 
 									// If we have usage data from Google, add it to the streaming chunk
 									if (
-										usage.promptTokens !== null ||
-										usage.completionTokens !== null ||
-										usage.totalTokens !== null
+										googleUsageResult.promptTokens !== null ||
+										googleUsageResult.completionTokens !== null ||
+										googleUsageResult.totalTokens !== null
 									) {
 										transformedData.usage = {
-											prompt_tokens: usage.promptTokens ?? 0,
-											completion_tokens: usage.completionTokens ?? 0,
-											total_tokens: usage.totalTokens ?? 0,
-											...(usage.reasoningTokens !== null && {
-												reasoning_tokens: usage.reasoningTokens,
+											prompt_tokens: googleUsageResult.promptTokens ?? 0,
+											completion_tokens:
+												googleUsageResult.completionTokens ?? 0,
+											total_tokens: googleUsageResult.totalTokens ?? 0,
+											...(googleUsageResult.reasoningTokens !== null && {
+												reasoning_tokens: googleUsageResult.reasoningTokens,
 											}),
 										};
 									}
@@ -4142,7 +4169,7 @@ chat.openapi(completions, async (c) => {
 
 									// Create a copy without content in delta for streaming
 									const chunkWithoutContent = JSON.parse(
-										JSON.stringify(transformedData),
+										serializeStreamingChunk(transformedData),
 									);
 									if (chunkWithoutContent.choices?.[0]?.delta?.content) {
 										delete chunkWithoutContent.choices[0].delta.content;
@@ -4165,7 +4192,7 @@ chat.openapi(completions, async (c) => {
 									}
 								} else {
 									await writeSSEAndCache({
-										data: JSON.stringify(transformedData),
+										data: serializeStreamingChunk(transformedData),
 										id: String(eventId++),
 									});
 								}
@@ -4384,13 +4411,16 @@ chat.openapi(completions, async (c) => {
 										break;
 								}
 
-								// Extract token usage using helper function
-								const usage = extractTokenUsage(
-									data,
-									usedProvider,
-									fullContent,
-									imageByteSize,
-								);
+								// Extract token usage using helper function.
+								// Reuse the result from earlier Google-specific extraction if available.
+								const usage =
+									googleUsageResult ??
+									extractTokenUsage(
+										data,
+										usedProvider,
+										fullContent,
+										imageByteSize,
+									);
 								if (usage.promptTokens !== null) {
 									promptTokens = usage.promptTokens;
 								}

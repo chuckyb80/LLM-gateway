@@ -76,6 +76,15 @@ describe("mightBeCompleteJson", () => {
 		expect(mightBeCompleteJson("[1,2]]")).toBe(false);
 	});
 
+	it("handles leading and trailing whitespace without .trim() copy", () => {
+		expect(mightBeCompleteJson('  {"a":1}  ')).toBe(true);
+		expect(mightBeCompleteJson('\n{"a":1}\n')).toBe(true);
+		expect(mightBeCompleteJson("\t[1,2]\t")).toBe(true);
+		expect(mightBeCompleteJson('  \n\t{"a":1}\n  ')).toBe(true);
+		expect(mightBeCompleteJson("   ")).toBe(false);
+		expect(mightBeCompleteJson("\n\n")).toBe(false);
+	});
+
 	// Tests for large payload optimization (>100KB threshold)
 	describe("large payloads (>100KB)", () => {
 		const LARGE_SIZE = 120 * 1024; // 120KB to exceed the 100KB threshold
@@ -117,6 +126,12 @@ describe("mightBeCompleteJson", () => {
 			// Extra opening brace
 			const json = `{"outer":{{"inner":{"data":"${base64Data}"}}}`;
 			expect(mightBeCompleteJson(json)).toBe(false);
+		});
+
+		it("handles large payload with surrounding whitespace", () => {
+			const base64Data = "A".repeat(LARGE_SIZE);
+			const json = `  \n{"data":"${base64Data}"}\n  `;
+			expect(mightBeCompleteJson(json)).toBe(true);
 		});
 
 		it("handles large payload performance efficiently", () => {
