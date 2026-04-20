@@ -4,10 +4,11 @@ import { Code, GithubIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAppConfig } from "@/lib/config";
 import { useApi } from "@/lib/fetch-client";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { Input } from "@llmgateway/shared/components/ui/input";
 
 function Newsletter() {
 	const [email, setEmail] = useState("");

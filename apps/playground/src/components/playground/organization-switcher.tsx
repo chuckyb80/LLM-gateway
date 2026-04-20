@@ -3,7 +3,7 @@
 import { ChevronsUpDown, Check, PlusCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@llmgateway/shared/components/ui/dropdown-menu";
 
 import { NewOrganizationDialog } from "./new-organization-dialog";
 

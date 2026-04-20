@@ -5,7 +5,9 @@ import {
 } from "lucide-react";
 import { type ComponentProps, createContext, use } from "react";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -13,8 +15,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/dropdown-menu";
 
 const providers = {
 	github: {

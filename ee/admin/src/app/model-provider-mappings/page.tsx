@@ -5,10 +5,11 @@ import { Suspense } from "react";
 
 import { MappingsTable } from "@/components/mappings-table";
 import { TimeWindowSelector } from "@/components/time-window-selector";
-import { Button } from "@/components/ui/button";
 import { parsePageWindow, windowToFromTo } from "@/lib/page-window";
 import { requireSession } from "@/lib/require-session";
 import { createServerApiClient } from "@/lib/server-api";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 type MappingSortBy =
 	| "providerId"

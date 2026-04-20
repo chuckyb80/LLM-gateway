@@ -13,7 +13,6 @@ import { AuthDialog } from "@/components/playground/auth-dialog";
 import { ChatHeader } from "@/components/playground/chat-header";
 import { ChatSidebar } from "@/components/playground/chat-sidebar";
 import { ChatUI } from "@/components/playground/chat-ui";
-import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 // No local api key. We'll call backend to ensure key cookie exists after login.
 import {
@@ -29,6 +28,8 @@ import { parseImageFile } from "@/lib/image-utils";
 import { mapModels } from "@/lib/mapmodels";
 import { shouldDisableFallback } from "@/lib/no-fallback";
 import { getErrorMessage } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type {
 	ApiModel,

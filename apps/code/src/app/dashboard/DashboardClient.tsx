@@ -19,12 +19,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { CodingModelsShowcase } from "@/components/CodingModelsShowcase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useUser } from "@/hooks/useUser";
 import { useAuth } from "@/lib/auth-client";
 import { useAppConfig } from "@/lib/config";
 import { useApi } from "@/lib/fetch-client";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { Input } from "@llmgateway/shared/components/ui/input";
 
 import type { PlanOption, PlanTier } from "./types";
 

@@ -5,15 +5,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod/v3";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import {
 	Form,
 	FormControl,
@@ -22,13 +13,31 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApiKey } from "@/hooks/useApiKey";
 import { useAutoApiKey } from "@/hooks/useAutoApiKey";
 import { useCreateApiKey } from "@/hooks/useCreateApiKey";
 import { useAppConfig } from "@/lib/config";
+
+import {
+	Alert,
+	AlertDescription,
+} from "@llmgateway/shared/components/ui/alert";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@llmgateway/shared/components/ui/dialog";
+import { Input } from "@llmgateway/shared/components/ui/input";
+import { Label } from "@llmgateway/shared/components/ui/label";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@llmgateway/shared/components/ui/tabs";
 
 const apiKeySchema = z.object({
 	apiKey: z

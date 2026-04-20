@@ -3,14 +3,15 @@
 import { type ComponentProps, createContext, use, useMemo } from "react";
 import { estimateCost, type ModelId } from "tokenlens";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	HoverCard,
 	HoverCardContent,
 	HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/hover-card";
+import { Progress } from "@llmgateway/shared/components/ui/progress";
 
 import type { LanguageModelUsage } from "ai";
 

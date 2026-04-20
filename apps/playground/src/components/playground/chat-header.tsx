@@ -1,10 +1,11 @@
 import { ThemeToggle } from "@/components/landing/theme-toggle";
 import { ModelSelector } from "@/components/model-selector";
 import { McpServersDialog } from "@/components/playground/mcp-servers-dialog";
-import { Label } from "@/components/ui/label";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Switch } from "@/components/ui/switch";
-import { TooltipProvider } from "@/components/ui/tooltip";
+
+import { Label } from "@llmgateway/shared/components/ui/label";
+import { Switch } from "@llmgateway/shared/components/ui/switch";
+import { TooltipProvider } from "@llmgateway/shared/components/ui/tooltip";
 
 import type { McpServer } from "@/hooks/useMcpServers";
 import type { ApiModel, ApiProvider } from "@/lib/fetch-models";

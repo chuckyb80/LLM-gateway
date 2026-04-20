@@ -9,19 +9,7 @@ import { CreditCard, ExternalLink, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useApi } from "@/lib/fetch-client";
 import { useStripe } from "@/lib/stripe";
 
@@ -30,6 +18,18 @@ import {
 	CREDIT_TOP_UP_MIN_AMOUNT,
 	isCreditTopUpAmountInRange,
 } from "@llmgateway/shared";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@llmgateway/shared/components/ui/dialog";
+import { Input } from "@llmgateway/shared/components/ui/input";
+import { Label } from "@llmgateway/shared/components/ui/label";
 
 import type React from "react";
 

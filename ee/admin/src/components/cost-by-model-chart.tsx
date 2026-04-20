@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -17,6 +16,8 @@ import {
 	ChartTooltipContent,
 } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type { ChartConfig } from "@/components/ui/chart";
 import type { TokenWindow } from "@/lib/types";

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { CodingModelsShowcase } from "@/components/CodingModelsShowcase";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/button";
 import { getConfig } from "@/lib/config-server";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type { Metadata } from "next";
 

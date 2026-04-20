@@ -10,14 +10,15 @@ import {
 } from "lucide-react";
 import { isValidElement } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ImageZoom } from "@/components/ui/image-zoom";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/collapsible";
+import { ImageZoom } from "@llmgateway/shared/components/ui/image-zoom";
 
 import { CodeBlock } from "./code-block";
 import { Image } from "./image";

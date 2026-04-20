@@ -5,8 +5,6 @@ import {
 	DeleteRateLimitButton,
 	RateLimitForm,
 } from "@/components/rate-limit-form";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -21,6 +19,9 @@ import {
 	getGlobalRateLimits,
 	getRateLimitOptions,
 } from "@/lib/admin-rate-limits";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 function formatDate(dateString: string) {
 	return new Date(dateString).toLocaleDateString("en-US", {

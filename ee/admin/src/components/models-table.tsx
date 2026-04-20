@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 
 import { HistoryChart } from "@/components/history-chart";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -17,6 +15,9 @@ import {
 } from "@/components/ui/table";
 import { getModelHistory } from "@/lib/admin-history";
 import { cn } from "@/lib/utils";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type { HistoryWindow } from "@/components/history-chart";
 import type { PageWindow } from "@/lib/page-window";

@@ -4,7 +4,7 @@ import { Gift, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -13,10 +13,10 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from "@llmgateway/shared/components/ui/dialog";
+import { Input } from "@llmgateway/shared/components/ui/input";
+import { Label } from "@llmgateway/shared/components/ui/label";
+import { Textarea } from "@llmgateway/shared/components/ui/textarea";
 
 interface GiftCreditsDialogProps {
 	orgId: string;

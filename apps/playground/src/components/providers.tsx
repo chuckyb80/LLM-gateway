@@ -7,8 +7,9 @@ import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo } from "react";
 
-import { Toaster } from "@/components/ui/sonner";
 import { AppConfigProvider } from "@/lib/config";
+
+import { Toaster } from "@llmgateway/shared/components/ui/sonner";
 
 import type { AppConfig } from "@/lib/config-server";
 import type { ReactNode } from "react";

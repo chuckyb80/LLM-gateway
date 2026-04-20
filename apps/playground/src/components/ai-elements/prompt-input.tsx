@@ -35,32 +35,33 @@ import {
 	useState,
 } from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
 	InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@llmgateway/shared/components/ui/dropdown-menu";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
+} from "@llmgateway/shared/components/ui/select";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/tooltip";
 
 import type { ChatStatus, FileUIPart } from "ai";
 // ============================================================================

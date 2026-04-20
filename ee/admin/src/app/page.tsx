@@ -17,10 +17,11 @@ import { DashboardCostByModel } from "@/components/dashboard-cost-by-model";
 import { DateRangePicker } from "@/components/date-range-picker";
 import { RevenueChart } from "@/components/revenue-chart";
 import { SignupsChart } from "@/components/signups-chart";
-import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/require-session";
 import { createServerApiClient } from "@/lib/server-api";
 import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
 	style: "currency",

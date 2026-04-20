@@ -9,7 +9,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 
-import { Button } from "@/components/ui/button";
 import {
 	Form,
 	FormControl,
@@ -18,9 +17,11 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { useUser } from "@/hooks/useUser";
 import { useAuth } from "@/lib/auth-client";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { Input } from "@llmgateway/shared/components/ui/input";
 
 const formSchema = z.object({
 	email: z.string().email({ message: "Please enter a valid email address" }),

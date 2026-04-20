@@ -13,15 +13,16 @@ import {
 } from "react";
 import { createHighlighter } from "shiki";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/select";
 
 import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
 import type {

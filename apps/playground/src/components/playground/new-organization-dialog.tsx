@@ -4,7 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { useApi } from "@/lib/fetch-client";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -12,10 +14,9 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useApi } from "@/lib/fetch-client";
+} from "@llmgateway/shared/components/ui/dialog";
+import { Input } from "@llmgateway/shared/components/ui/input";
+import { Label } from "@llmgateway/shared/components/ui/label";
 
 import type { Organization } from "@/lib/types";
 import type React from "react";

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 interface AuthDialogProps {
 	open: boolean;

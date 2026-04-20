@@ -10,9 +10,13 @@ import {
 import { Loader } from "@/components/ai-elements/loader";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Response } from "@/components/ai-elements/response";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+
+import {
+	Alert,
+	AlertDescription,
+} from "@llmgateway/shared/components/ui/alert";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { Textarea } from "@llmgateway/shared/components/ui/textarea";
 
 import type { ComboboxModel } from "@/lib/types";
 

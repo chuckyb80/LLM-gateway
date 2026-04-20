@@ -10,16 +10,6 @@ import {
 	useState,
 } from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import {
 	getVideoDurations,
 	getVideoSizeLabel,
@@ -29,6 +19,17 @@ import {
 	type VideoInputImage,
 	type VideoSize,
 } from "@/lib/video-gen";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@llmgateway/shared/components/ui/select";
+import { Switch } from "@llmgateway/shared/components/ui/switch";
+import { Textarea } from "@llmgateway/shared/components/ui/textarea";
 
 interface VideoControlsProps {
 	prompt: string;

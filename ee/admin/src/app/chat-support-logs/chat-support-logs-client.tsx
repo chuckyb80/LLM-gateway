@@ -18,7 +18,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { useApi } from "@/lib/fetch-client";
+import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -26,10 +29,8 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useApi } from "@/lib/fetch-client";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/dialog";
+import { ScrollArea } from "@llmgateway/shared/components/ui/scroll-area";
 
 function timeAgo(dateString: string): string {
 	const now = Date.now();

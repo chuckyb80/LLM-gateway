@@ -4,7 +4,8 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { getProviderIcon } from "@llmgateway/shared";
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -13,18 +14,16 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@llmgateway/shared/components/ui/dialog";
+import { Input } from "@llmgateway/shared/components/ui/input";
+import { Label } from "@llmgateway/shared/components/ui/label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-
-import { getProviderIcon } from "@llmgateway/shared";
+} from "@llmgateway/shared/components/ui/select";
 
 import type { ProviderModelMapping } from "@/lib/types";
 

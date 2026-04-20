@@ -3,7 +3,6 @@ import { Loader2 } from "lucide-react";
 import Link from "next/link";
 
 import { CreditsDisplay } from "@/components/credits/credits-display";
-import { Logo } from "@/components/ui/logo";
 import {
 	Sidebar,
 	SidebarContent,
@@ -13,6 +12,8 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
+
+import { Logo } from "@llmgateway/shared/components/ui/logo";
 
 import type { Organization } from "@/lib/types";
 

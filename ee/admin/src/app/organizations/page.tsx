@@ -10,8 +10,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DeleteUserButton } from "@/components/delete-user-button";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -24,6 +22,9 @@ import { deleteUser } from "@/lib/admin-organizations";
 import { requireSession } from "@/lib/require-session";
 import { createServerApiClient } from "@/lib/server-api";
 import { cn } from "@/lib/utils";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 type SortBy =
 	| "name"

@@ -3,11 +3,12 @@
 import { AlertCircle, Download, Film } from "lucide-react";
 import { memo } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import { downloadVideo } from "@/lib/video-gen";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { Progress } from "@llmgateway/shared/components/ui/progress";
+import { Skeleton } from "@llmgateway/shared/components/ui/skeleton";
 
 import type { VideoGalleryItem } from "@/lib/video-gen";
 

@@ -4,11 +4,12 @@ import { Loader2, Send, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useFetchClient } from "@/lib/fetch-client";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { Input } from "@llmgateway/shared/components/ui/input";
+import { Label } from "@llmgateway/shared/components/ui/label";
+import { Textarea } from "@llmgateway/shared/components/ui/textarea";
 
 interface ReplyFormProps {
 	submissionId: string;

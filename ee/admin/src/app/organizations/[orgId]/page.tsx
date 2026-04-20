@@ -11,8 +11,6 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -21,10 +19,18 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { giftCreditsToOrganization } from "@/lib/admin-organizations";
 import { requireSession } from "@/lib/require-session";
 import { createServerApiClient } from "@/lib/server-api";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@llmgateway/shared/components/ui/tabs";
 
 import { GiftCreditsDialog } from "./gift-credits-dialog";
 import { OrgCostByModel } from "./org-cost-by-model";

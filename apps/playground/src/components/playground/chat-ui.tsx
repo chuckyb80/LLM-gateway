@@ -62,16 +62,17 @@ import {
 	ToolOutput,
 } from "@/components/ai-elements/tool";
 import { AspectRatioIcon } from "@/components/playground/aspect-ratio-icon";
-import { Button } from "@/components/ui/button";
-import { ImageZoom } from "@/components/ui/image-zoom";
+import { parseImagePartToDataUrl } from "@/lib/image-utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { ImageZoom } from "@llmgateway/shared/components/ui/image-zoom";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { parseImagePartToDataUrl } from "@/lib/image-utils";
+} from "@llmgateway/shared/components/ui/select";
 
 import type { UIMessage, ChatRequestOptions, ChatStatus } from "ai";
 

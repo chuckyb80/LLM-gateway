@@ -11,12 +11,13 @@ import { ImageControls } from "@/components/playground/image-controls";
 import { ImageGallery } from "@/components/playground/image-gallery";
 import { ImageHeader } from "@/components/playground/image-header";
 import { ImageSidebar } from "@/components/playground/image-sidebar";
-import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useUser } from "@/hooks/useUser";
 import { getModelImageConfig } from "@/lib/image-gen";
 import { mapModels } from "@/lib/mapmodels";
 import { shouldDisableFallback } from "@/lib/no-fallback";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type { ApiModel, ApiProvider } from "@/lib/fetch-models";
 import type { AspectRatio, GalleryItem } from "@/lib/image-gen";

@@ -10,8 +10,9 @@ import {
 	useState,
 } from "react";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type { UIMessage } from "ai";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";

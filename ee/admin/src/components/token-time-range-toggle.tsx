@@ -4,13 +4,14 @@ import { ChevronDownIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { Input } from "@/components/ui/input";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+
+import { Input } from "@llmgateway/shared/components/ui/input";
 
 import type { TokenWindow } from "@/lib/types";
 

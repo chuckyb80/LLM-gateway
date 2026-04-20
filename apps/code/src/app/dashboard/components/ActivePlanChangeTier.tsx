@@ -2,7 +2,7 @@
 
 import { ArrowRight, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type { PlanOption, PlanTier } from "@/app/dashboard/types";
 

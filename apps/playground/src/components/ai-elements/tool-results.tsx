@@ -3,9 +3,12 @@
 import { Check, Copy, Eye, ImageIcon, Sparkles, Wrench } from "lucide-react";
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import {
+	ScrollArea,
+	ScrollBar,
+} from "@llmgateway/shared/components/ui/scroll-area";
 
 /**
  * Model data structure from list-models tool

@@ -4,10 +4,9 @@ import { ArrowRight, Check, Code, Copy } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-
 import { models, type ModelDefinition } from "@llmgateway/models";
 import { getProviderIcon } from "@llmgateway/shared/components";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 const RECOMMENDED_MODEL_IDS: string[] = [
 	"claude-opus-4-5-20251101",

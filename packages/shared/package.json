@@ -21,6 +21,22 @@
 			"types": "./dist/components/index.d.ts",
 			"import": "./dist/components/index.js"
 		},
+		"./components/ui/*": {
+			"types": "./dist/components/ui/*.d.ts",
+			"import": "./dist/components/ui/*.js"
+		},
+		"./components/*": {
+			"types": "./dist/components/*.d.ts",
+			"import": "./dist/components/*.js"
+		},
+		"./hooks/*": {
+			"types": "./dist/hooks/*.d.ts",
+			"import": "./dist/hooks/*.js"
+		},
+		"./lib/*": {
+			"types": "./dist/lib/*.d.ts",
+			"import": "./dist/lib/*.js"
+		},
 		"./email": {
 			"types": "./dist/email.d.ts",
 			"import": "./dist/email.js"
@@ -32,10 +48,12 @@
 		"dist/"
 	],
 	"scripts": {
-		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc && resolve-tspaths",
-		"dev": "tsc-watch --onSuccess 'resolve-tspaths'",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.build.json && resolve-tspaths -p tsconfig.build.json",
+		"build-storybook": "storybook build",
+		"dev": "tsc-watch -p tsconfig.build.json --onSuccess 'resolve-tspaths -p tsconfig.build.json'",
 		"format": "eslint --fix . && prettier --write .",
-		"lint": "eslint . && prettier --check ."
+		"lint": "eslint . && prettier --check .",
+		"storybook": "storybook dev -p 6006"
 	},
 	"dependencies": {
 		"@google-cloud/storage": "7.19.0",
@@ -76,7 +94,13 @@
 		"zod": "3.25.75"
 	},
 	"devDependencies": {
+		"@storybook/addon-themes": "^9.1.20",
+		"@storybook/react-vite": "^9.1.20",
+		"@tailwindcss/vite": "^4.1.16",
 		"@types/react": "^19.2.14",
-		"@types/react-dom": "^19.2.3"
+		"@types/react-dom": "^19.2.3",
+		"storybook": "^9.1.20",
+		"tailwindcss": "^4.1.16",
+		"vite": "^6.3.6"
 	}
 }

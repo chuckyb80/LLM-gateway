@@ -1,0 +1,31 @@
+import { Separator } from "@/components/ui/separator";
+
+import type { Meta, StoryObj } from "@storybook/react-vite";
+
+const meta: Meta<typeof Separator> = {
+	title: "UI/Separator",
+	component: Separator,
+};
+
+export default meta;
+
+type Story = StoryObj<typeof Separator>;
+
+export const Horizontal: Story = {
+	render: () => (
+		<div className="w-72">
+			<div className="text-sm font-medium">Radix Primitives</div>
+			<p className="text-muted-foreground text-sm">
+				An open-source UI component library.
+			</p>
+			<Separator className="my-4" />
+			<div className="flex h-5 items-center gap-4 text-sm">
+				<div>Blog</div>
+				<Separator orientation="vertical" />
+				<div>Docs</div>
+				<Separator orientation="vertical" />
+				<div>Source</div>
+			</div>
+		</div>
+	),
+};

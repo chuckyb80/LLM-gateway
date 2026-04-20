@@ -3,20 +3,21 @@
 import { ChevronDownIcon } from "lucide-react";
 import { createContext, use, useState, useMemo, useCallback } from "react";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Input } from "@/components/ui/input";
+} from "@llmgateway/shared/components/ui/collapsible";
+import { Input } from "@llmgateway/shared/components/ui/input";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/tooltip";
 
 import type { ComponentProps, ReactNode } from "react";
 

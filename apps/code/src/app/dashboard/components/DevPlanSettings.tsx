@@ -4,9 +4,10 @@ import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useApi } from "@/lib/fetch-client";
+
+import { Label } from "@llmgateway/shared/components/ui/label";
+import { Switch } from "@llmgateway/shared/components/ui/switch";
 
 interface DevPlanSettingsProps {
 	devPlanAllowAllModels: boolean;

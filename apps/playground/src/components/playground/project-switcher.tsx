@@ -1,7 +1,7 @@
 import { ChevronsUpDown, Check, PlusCircle } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 	DropdownMenuGroup,
-} from "@/components/ui/dropdown-menu";
+} from "@llmgateway/shared/components/ui/dropdown-menu";
 
 import { NewProjectDialog } from "./new-project-dialog";
 

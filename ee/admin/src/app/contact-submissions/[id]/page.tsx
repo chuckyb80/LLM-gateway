@@ -1,9 +1,10 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import { requireSession } from "@/lib/require-session";
 import { createServerApiClient } from "@/lib/server-api";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
 
 import { DeleteSubmissionButton } from "./delete-button";
 import { ReplyForm } from "./reply-form";

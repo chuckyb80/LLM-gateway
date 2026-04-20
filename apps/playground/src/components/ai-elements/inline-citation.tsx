@@ -10,19 +10,20 @@ import {
 	useState,
 } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import {
 	Carousel,
 	type CarouselApi,
 	CarouselContent,
 	CarouselItem,
 } from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
 import {
 	HoverCard,
 	HoverCardContent,
 	HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/hover-card";
 
 export type InlineCitationProps = ComponentProps<"span">;
 

@@ -19,8 +19,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Command,
@@ -31,19 +29,10 @@ import {
 	CommandList,
 } from "@/components/ui/command";
 import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import {
 	formatPrice,
 	formatContextSize,
@@ -55,6 +44,17 @@ import {
 	getProviderIcon,
 	providerLogoUrls,
 } from "@llmgateway/shared/components";
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@llmgateway/shared/components/ui/dialog";
+import { Label } from "@llmgateway/shared/components/ui/label";
+import { Separator } from "@llmgateway/shared/components/ui/separator";
+import { Switch } from "@llmgateway/shared/components/ui/switch";
 
 import type {
 	ApiModel,

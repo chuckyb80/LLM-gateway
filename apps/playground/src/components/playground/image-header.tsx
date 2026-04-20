@@ -4,10 +4,11 @@ import { Plus, X } from "lucide-react";
 
 import { ThemeToggle } from "@/components/landing/theme-toggle";
 import { ModelSelector } from "@/components/model-selector";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Switch } from "@/components/ui/switch";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { Label } from "@llmgateway/shared/components/ui/label";
+import { Switch } from "@llmgateway/shared/components/ui/switch";
 
 import type { ApiModel, ApiProvider } from "@/lib/fetch-models";
 

@@ -5,9 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { windowOptions } from "@/components/history-chart";
 import { ModelProviderCharts } from "@/components/model-provider-charts";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { getModelDetail, getModelHistory } from "@/lib/admin-history";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type {
 	HistoryWindow,

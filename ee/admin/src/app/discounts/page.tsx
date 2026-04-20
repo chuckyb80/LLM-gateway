@@ -2,8 +2,6 @@ import { Globe, Tag } from "lucide-react";
 import Link from "next/link";
 
 import { DeleteDiscountButton, DiscountForm } from "@/components/discount-form";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -19,6 +17,9 @@ import {
 	getGlobalDiscounts,
 } from "@/lib/admin-discounts";
 import { requireSession } from "@/lib/require-session";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 function formatDate(dateString: string) {
 	return new Date(dateString).toLocaleDateString("en-US", {

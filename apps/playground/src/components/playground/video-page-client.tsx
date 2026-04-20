@@ -10,7 +10,6 @@ import { VideoControls } from "@/components/playground/video-controls";
 import { VideoGallery } from "@/components/playground/video-gallery";
 import { VideoHeader } from "@/components/playground/video-header";
 import { VideoSidebar } from "@/components/playground/video-sidebar";
-import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useUser } from "@/hooks/useUser";
 import { useFetchClient } from "@/lib/fetch-client";
@@ -23,6 +22,8 @@ import {
 	supportsVideoFrameInput,
 	supportsVideoReferenceInput,
 } from "@/lib/video-gen";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type { ApiModel, ApiProvider } from "@/lib/fetch-models";
 import type { ComboboxModel, Organization, Project } from "@/lib/types";

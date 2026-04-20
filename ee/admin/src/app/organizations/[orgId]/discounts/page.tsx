@@ -3,8 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DeleteDiscountButton, DiscountForm } from "@/components/discount-form";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -21,6 +19,9 @@ import {
 } from "@/lib/admin-discounts";
 import { requireSession } from "@/lib/require-session";
 import { createServerApiClient } from "@/lib/server-api";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 function formatDate(dateString: string) {
 	return new Date(dateString).toLocaleDateString("en-US", {

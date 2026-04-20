@@ -5,7 +5,9 @@ import { Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { useApi } from "@/lib/fetch-client";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -13,8 +15,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { useApi } from "@/lib/fetch-client";
+} from "@llmgateway/shared/components/ui/dialog";
 
 export function DeleteSubmissionButton({
 	id,

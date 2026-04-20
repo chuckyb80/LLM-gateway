@@ -4,11 +4,12 @@ import { Download, AlertCircle, ImageIcon } from "lucide-react";
 import { memo } from "react";
 
 import { Image } from "@/components/ai-elements/image";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ImageZoom } from "@/components/ui/image-zoom";
-import { Skeleton } from "@/components/ui/skeleton";
 import { downloadImage } from "@/lib/image-gen";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { ImageZoom } from "@llmgateway/shared/components/ui/image-zoom";
+import { Skeleton } from "@llmgateway/shared/components/ui/skeleton";
 
 import type { GalleryItem } from "@/lib/image-gen";
 

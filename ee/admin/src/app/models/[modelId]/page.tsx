@@ -3,9 +3,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ModelDetailClient } from "@/components/model-detail-client";
-import { Button } from "@/components/ui/button";
 import { requireSession } from "@/lib/require-session";
 import { createServerApiClient } from "@/lib/server-api";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 export default async function ModelDetailPage({
 	params,

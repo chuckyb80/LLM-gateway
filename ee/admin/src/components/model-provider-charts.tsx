@@ -3,10 +3,10 @@
 import { useCallback } from "react";
 
 import { HistoryChart } from "@/components/history-chart";
-import { Badge } from "@/components/ui/badge";
 import { getMappingHistory } from "@/lib/admin-history";
 
 import { getProviderIcon } from "@llmgateway/shared";
+import { Badge } from "@llmgateway/shared/components/ui/badge";
 
 import type { HistoryWindow } from "@/components/history-chart";
 import type { ModelProviderStats } from "@/lib/types";

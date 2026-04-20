@@ -1,6 +1,5 @@
 import { ExternalLink, Search } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -8,7 +7,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
 	Table,
 	TableBody,
@@ -19,6 +17,9 @@ import {
 } from "@/components/ui/table";
 import { requireSession } from "@/lib/require-session";
 import { createServerApiClient } from "@/lib/server-api";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Input } from "@llmgateway/shared/components/ui/input";
 
 interface PaymentFailuresPageProps {
 	searchParams: Promise<{

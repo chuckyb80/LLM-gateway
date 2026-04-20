@@ -11,7 +11,6 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { TimeWindowSelector } from "@/components/time-window-selector";
-import { Button } from "@/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -26,6 +25,7 @@ import { createServerApiClient } from "@/lib/server-api";
 import { cn } from "@/lib/utils";
 
 import { getProviderIcon } from "@llmgateway/shared";
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 type SortBy = "logsCount" | "errorsCount" | "cost" | "modelId" | "providerId";
 type SortOrder = "asc" | "desc";

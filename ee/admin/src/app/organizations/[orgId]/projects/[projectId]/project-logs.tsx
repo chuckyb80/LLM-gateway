@@ -10,7 +10,6 @@ import {
 } from "react";
 
 import { LogCard } from "@/components/log-card";
-import { Button } from "@/components/ui/button";
 import {
 	Command,
 	CommandEmpty,
@@ -23,15 +22,17 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { loadProjectLogsAction } from "@/lib/admin-organizations";
+import { cn } from "@/lib/utils";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { loadProjectLogsAction } from "@/lib/admin-organizations";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/select";
 
 import type { ProjectLogEntry, ProjectLogsResponse } from "@/lib/types";
 

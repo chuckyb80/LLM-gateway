@@ -24,17 +24,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { CreditsDisplay } from "@/components/credits/credits-display";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/ui/logo";
 import {
 	Sidebar,
 	SidebarContent,
@@ -55,6 +44,18 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useUser } from "@/hooks/useUser";
 import { clearLastUsedProjectCookiesAction } from "@/lib/actions/project";
 import { useAuth } from "@/lib/auth-client";
+
+import { Badge } from "@llmgateway/shared/components/ui/badge";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@llmgateway/shared/components/ui/dropdown-menu";
+import { Input } from "@llmgateway/shared/components/ui/input";
+import { Logo } from "@llmgateway/shared/components/ui/logo";
 
 import { ChatSidebarSkeleton } from "./chat-sidebar-skeleton";
 // import { ProjectSwitcher } from "./project-switcher";

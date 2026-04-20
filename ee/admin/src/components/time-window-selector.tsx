@@ -3,8 +3,9 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-import { Button } from "@/components/ui/button";
 import { pageWindowOptions } from "@/lib/page-window";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 import type { PageWindow } from "@/lib/page-window";
 

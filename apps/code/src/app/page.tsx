@@ -19,8 +19,9 @@ import {
 	LandingPageTracker,
 } from "@/components/LandingTracker";
 import { TerminalPreview } from "@/components/TerminalPreview";
-import { Button } from "@/components/ui/button";
 import { getConfig } from "@/lib/config-server";
+
+import { Button } from "@llmgateway/shared/components/ui/button";
 
 const plans = [
 	{

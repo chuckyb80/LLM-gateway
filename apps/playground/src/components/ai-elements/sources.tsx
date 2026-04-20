@@ -2,12 +2,13 @@
 
 import { BookIcon, ChevronDownIcon } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+} from "@llmgateway/shared/components/ui/collapsible";
 
 import type { ComponentProps } from "react";
 

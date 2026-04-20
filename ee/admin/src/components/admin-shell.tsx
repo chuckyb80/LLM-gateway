@@ -18,7 +18,6 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import {
 	Sidebar,
 	SidebarContent,
@@ -36,7 +35,8 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth-client";
 
-import { Logo } from "./ui/logo";
+import { Button } from "@llmgateway/shared/components/ui/button";
+import { Logo } from "@llmgateway/shared/components/ui/logo";
 
 import type { ReactNode } from "react";
 
