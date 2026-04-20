@@ -896,7 +896,9 @@ function determineStopReason(
 			return "max_tokens";
 		case "tool_calls":
 			return "tool_use";
+		case "content_filter":
+			return null;
 		default:
-			return "end_turn";
+			return null;
 	}
 }
