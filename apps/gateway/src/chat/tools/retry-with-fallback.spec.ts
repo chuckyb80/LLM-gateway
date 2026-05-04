@@ -19,9 +19,12 @@ describe("isRetryableErrorType", () => {
 		expect(isRetryableErrorType("upstream_timeout")).toBe(true);
 	});
 
+	it("retries on gateway errors so end users don't see 401/403 from a single bad key", () => {
+		expect(isRetryableErrorType("gateway_error")).toBe(true);
+	});
+
 	it("does not retry on non-retryable error types", () => {
 		expect(isRetryableErrorType("client_error")).toBe(false);
-		expect(isRetryableErrorType("gateway_error")).toBe(false);
 		expect(isRetryableErrorType("content_filter")).toBe(false);
 	});
 });
@@ -56,8 +59,21 @@ describe("shouldRetryRequest", () => {
 		expect(
 			shouldRetryRequest({ ...defaultOpts, errorType: "client_error" }),
 		).toBe(false);
+	});
+
+	it("retries gateway_error across providers when no specific provider was requested", () => {
 		expect(
 			shouldRetryRequest({ ...defaultOpts, errorType: "gateway_error" }),
+		).toBe(true);
+	});
+
+	it("does not retry gateway_error across providers when a specific provider was requested", () => {
+		expect(
+			shouldRetryRequest({
+				...defaultOpts,
+				errorType: "gateway_error",
+				requestedProvider: "openai",
+			}),
 		).toBe(false);
 	});
 

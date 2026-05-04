@@ -1935,7 +1935,7 @@ describe("fallback and error status code handling", () => {
 			expect(json).toHaveProperty("error");
 		});
 
-		test("non-streaming: does not retry on non-retryable 401 error", async () => {
+		test("non-streaming: retries 401 across providers when no specific provider requested", async () => {
 			await setupMultiProviderKeys();
 
 			const res = await app.request("/v1/chat/completions", {
@@ -1950,16 +1950,19 @@ describe("fallback and error status code handling", () => {
 				}),
 			});
 
-			// 401 is not retryable, so the gateway should return the error
+			// All mock providers return 401 for this trigger, so the final error
+			// remains gateway_error, but the gateway should have retried across providers.
 			expect(res.status).toBe(500);
 			const json = await res.json();
 			expect(json).toHaveProperty("error");
 			expect(json.error.type).toBe("gateway_error");
 
-			const logs = await waitForLogs(1);
-			const log = logs[0];
-			expect(log.finishReason).toBe("gateway_error");
-			expect(log.hasError).toBe(true);
+			const logs = await waitForLogs(2);
+			expect(logs.length).toBeGreaterThanOrEqual(2);
+			for (const log of logs) {
+				expect(log.finishReason).toBe("gateway_error");
+				expect(log.hasError).toBe(true);
+			}
 		});
 
 		test("non-streaming: retries on 404 and succeeds on fallback provider", async () => {
