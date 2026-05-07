@@ -155,8 +155,14 @@ function StatusIndicator({ log }: { log: Partial<Log> }) {
 	let color = "text-emerald-500";
 	let bgColor = "bg-emerald-500/10";
 	let label = "Completed";
+	const isClientError = log.unifiedFinishReason === "client_error";
 
-	if (log.hasError || log.unifiedFinishReason === "error") {
+	if (isClientError) {
+		StatusIcon = AlertCircle;
+		color = "text-orange-500";
+		bgColor = "bg-orange-500/10";
+		label = "Client Error";
+	} else if (log.hasError || log.unifiedFinishReason === "error") {
 		StatusIcon = AlertCircle;
 		color = "text-red-500";
 		bgColor = "bg-red-500/10";
@@ -434,6 +440,7 @@ export function LogDetailClient({
 		log.dataStorageCost !== null &&
 		log.dataStorageCost !== undefined &&
 		Number(log.dataStorageCost) > 0;
+	const isClientError = log.unifiedFinishReason === "client_error";
 
 	const throughput =
 		log.duration && log.totalTokens
@@ -1202,23 +1209,37 @@ export function LogDetailClient({
 
 				{log.hasError && !!log.errorDetails && (
 					<Section title="Error Details">
-						<div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
+						<div
+							className={`rounded-lg border p-4 space-y-3 ${isClientError ? "border-orange-500/20 bg-orange-500/5" : "border-red-500/20 bg-red-500/5"}`}
+						>
 							<div className="flex gap-6">
 								<div>
-									<p className="text-xs text-red-400 mb-0.5">Status Code</p>
+									<p
+										className={`mb-0.5 text-xs ${isClientError ? "text-orange-400" : "text-red-400"}`}
+									>
+										Status Code
+									</p>
 									<p className="text-sm font-semibold">
 										{log.errorDetails.statusCode}
 									</p>
 								</div>
 								<div>
-									<p className="text-xs text-red-400 mb-0.5">Status Text</p>
+									<p
+										className={`mb-0.5 text-xs ${isClientError ? "text-orange-400" : "text-red-400"}`}
+									>
+										Status Text
+									</p>
 									<p className="text-sm font-semibold">
 										{log.errorDetails.statusText}
 									</p>
 								</div>
 							</div>
 							<div>
-								<p className="text-xs text-red-400 mb-1">Error Message</p>
+								<p
+									className={`mb-1 text-xs ${isClientError ? "text-orange-400" : "text-red-400"}`}
+								>
+									Error Message
+								</p>
 								<pre className="text-xs overflow-auto whitespace-pre-wrap break-all font-mono bg-background rounded border p-3">
 									{log.errorDetails.responseText}
 								</pre>

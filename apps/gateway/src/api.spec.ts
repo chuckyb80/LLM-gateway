@@ -10,7 +10,12 @@ import {
 	resetKeyHealth,
 } from "./lib/api-key-health.js";
 import { createGatewayApiTestHarness } from "./test-utils/gateway-api-test-harness.js";
-import { readAll, waitForLogs } from "./test-utils/test-helpers.js";
+import {
+	readAll,
+	processPendingLogs,
+	waitForLogByRequestId,
+	waitForLogs,
+} from "./test-utils/test-helpers.js";
 
 describe("api", () => {
 	const harness = createGatewayApiTestHarness({
@@ -1616,6 +1621,7 @@ describe("api", () => {
 	});
 
 	test("Reasoning effort error for unsupported model", async () => {
+		const requestId = "reasoning-effort-unsupported-request-id";
 		await db.insert(tables.apiKey).values({
 			id: "token-id",
 			token: "real-token",
@@ -1628,6 +1634,7 @@ describe("api", () => {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
+				"x-request-id": requestId,
 				Authorization: `Bearer real-token`,
 			},
 			body: JSON.stringify({
@@ -1646,6 +1653,70 @@ describe("api", () => {
 
 		const json = await res.json();
 		expect(json.message).toContain("does not support reasoning");
+
+		const log = await waitForLogByRequestId(requestId);
+		expect(log.finishReason).toBe("client_error");
+		expect(log.unifiedFinishReason).toBe("client_error");
+
+		const matchingLogs = await db
+			.select()
+			.from(tables.log)
+			.where(eq(tables.log.requestId, requestId));
+		expect(matchingLogs).toHaveLength(1);
+	});
+
+	test("Schema validation errors are logged as client_error", async () => {
+		const requestId = "schema-validation-client-error-request-id";
+		await db.insert(tables.apiKey).values({
+			id: "token-id-schema-validation",
+			token: "real-token-schema-validation",
+			projectId: "project-id",
+			description: "Test API Key",
+			createdBy: "user-id",
+		});
+
+		const res = await app.request("/v1/chat/completions", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-request-id": requestId,
+				Authorization: "Bearer real-token-schema-validation",
+			},
+			body: JSON.stringify({
+				model: "gpt-4o-mini",
+				messages: [
+					{
+						role: "user",
+						content: 5555,
+					},
+				],
+			}),
+		});
+
+		expect(res.status).toBe(400);
+
+		const json = await res.json();
+		expect(json.success).toBe(false);
+		expect(JSON.stringify(json)).toContain("invalid_union");
+
+		const log = await waitForLogByRequestId(requestId);
+		expect(log.finishReason).toBe("client_error");
+		expect(log.unifiedFinishReason).toBe("client_error");
+		expect(log.errorDetails?.statusCode).toBe(400);
+		expect(log.errorDetails?.responseText).toContain("invalid_union");
+		expect(log.errorDetails?.responseText).toContain("messages");
+		expect(log.messages).toEqual([
+			{
+				role: "user",
+				content: 5555,
+			},
+		]);
+
+		const matchingLogs = await db
+			.select()
+			.from(tables.log)
+			.where(eq(tables.log.requestId, requestId));
+		expect(matchingLogs).toHaveLength(1);
 	});
 
 	test("Max tokens validation error when exceeding model limit", async () => {
@@ -1802,10 +1873,12 @@ describe("api", () => {
 
 	// test for missing Authorization header
 	test("/v1/chat/completions missing Authorization header", async () => {
+		const requestId = "missing-auth-request-id";
 		const res = await app.request("/v1/chat/completions", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
+				"x-request-id": requestId,
 				// Intentionally not setting Authorization header
 			},
 			body: JSON.stringify({
@@ -1819,6 +1892,13 @@ describe("api", () => {
 			}),
 		});
 		expect(res.status).toBe(401);
+
+		await processPendingLogs();
+		const logs = await db
+			.select()
+			.from(tables.log)
+			.where(eq(tables.log.requestId, requestId));
+		expect(logs).toHaveLength(0);
 	});
 
 	// test for explicitly specifying a provider in the format "provider/model"
@@ -1954,6 +2034,7 @@ describe("api", () => {
 
 	// test for missing provider API key
 	test("/v1/chat/completions with missing provider API key", async () => {
+		const requestId = "missing-provider-key-request-id";
 		await db.insert(tables.apiKey).values({
 			id: "token-id",
 			token: "real-token",
@@ -1966,6 +2047,7 @@ describe("api", () => {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
+				"x-request-id": requestId,
 				Authorization: `Bearer real-token`,
 			},
 			body: JSON.stringify({
@@ -1983,6 +2065,16 @@ describe("api", () => {
 		expect(errorMessage).toMatchInlineSnapshot(
 			`"{"error":true,"status":400,"message":"No API key set for provider: openai. Please add a provider key in your settings or add credits and switch to credits or hybrid mode."}"`,
 		);
+
+		const log = await waitForLogByRequestId(requestId);
+		expect(log.finishReason).toBe("client_error");
+		expect(log.unifiedFinishReason).toBe("client_error");
+
+		const matchingLogs = await db
+			.select()
+			.from(tables.log)
+			.where(eq(tables.log.requestId, requestId));
+		expect(matchingLogs).toHaveLength(1);
 	});
 
 	// test for provider error response and error logging

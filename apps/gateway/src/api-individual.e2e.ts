@@ -322,6 +322,12 @@ describe("e2e individual tests", () => {
 			expect((log.errorDetails as { message?: string })?.message).toContain(
 				"the word 'json'",
 			);
+
+			const matchingLogs = await db
+				.select()
+				.from(tables.log)
+				.where(eq(tables.log.requestId, requestId));
+			expect(matchingLogs).toHaveLength(1);
 		},
 	);
 

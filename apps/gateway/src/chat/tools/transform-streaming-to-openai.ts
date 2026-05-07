@@ -66,6 +66,26 @@ export function transformStreamingToOpenai(
 ): any {
 	let transformedData = data;
 
+	const mapOpenAIResponsesUsage = (responseUsage: any) => {
+		if (!responseUsage) {
+			return null;
+		}
+
+		return {
+			prompt_tokens: responseUsage.input_tokens ?? 0,
+			completion_tokens: responseUsage.output_tokens ?? 0,
+			total_tokens: responseUsage.total_tokens ?? 0,
+			...(responseUsage.output_tokens_details?.reasoning_tokens && {
+				reasoning_tokens: responseUsage.output_tokens_details.reasoning_tokens,
+			}),
+			...(responseUsage.input_tokens_details?.cached_tokens && {
+				prompt_tokens_details: {
+					cached_tokens: responseUsage.input_tokens_details.cached_tokens,
+				},
+			}),
+		};
+	};
+
 	const isKnownNonRenderableAwsBedrockDelta = (delta: any): boolean => {
 		if (!delta || typeof delta !== "object") {
 			return false;
@@ -820,7 +840,13 @@ export function transformStreamingToOpenai(
 					case "response.output_text.done":
 					case "response.web_search_call.in_progress":
 					case "response.web_search_call.searching":
-					case "response.web_search_call.completed":
+					case "response.web_search_call.completed": {
+						const responseStatus = data.response?.status;
+						const isCompletedTerminalEvent =
+							responseStatus === "completed" &&
+							(data.type === "response.output_item.done" ||
+								data.type === "response.content_part.done" ||
+								data.type === "response.output_text.done");
 						transformedData = {
 							id: data.response?.id ?? `chatcmpl-${Date.now()}`,
 							object: "chat.completion.chunk",
@@ -831,12 +857,15 @@ export function transformStreamingToOpenai(
 								{
 									index: 0,
 									delta: { role: "assistant" },
-									finish_reason: null,
+									finish_reason: isCompletedTerminalEvent ? "stop" : null,
 								},
 							],
-							usage: null,
+							usage: isCompletedTerminalEvent
+								? mapOpenAIResponsesUsage(data.response?.usage)
+								: null,
 						};
 						break;
+					}
 
 					case "response.reasoning_summary_part.added":
 					case "response.reasoning_summary_text.delta":
@@ -959,25 +988,6 @@ export function transformStreamingToOpenai(
 					}
 
 					case "response.completed": {
-						const responseUsage = data.response?.usage;
-						let usage = null;
-						if (responseUsage) {
-							usage = {
-								prompt_tokens: responseUsage.input_tokens ?? 0,
-								completion_tokens: responseUsage.output_tokens ?? 0,
-								total_tokens: responseUsage.total_tokens ?? 0,
-								...(responseUsage.output_tokens_details?.reasoning_tokens && {
-									reasoning_tokens:
-										responseUsage.output_tokens_details.reasoning_tokens,
-								}),
-								...(responseUsage.input_tokens_details?.cached_tokens && {
-									prompt_tokens_details: {
-										cached_tokens:
-											responseUsage.input_tokens_details.cached_tokens,
-									},
-								}),
-							};
-						}
 						transformedData = {
 							id: data.response?.id ?? `chatcmpl-${Date.now()}`,
 							object: "chat.completion.chunk",
@@ -991,31 +1001,12 @@ export function transformStreamingToOpenai(
 									finish_reason: "stop",
 								},
 							],
-							usage,
+							usage: mapOpenAIResponsesUsage(data.response?.usage),
 						};
 						break;
 					}
 
 					case "response.incomplete": {
-						const incompleteUsage = data.response?.usage;
-						let usage = null;
-						if (incompleteUsage) {
-							usage = {
-								prompt_tokens: incompleteUsage.input_tokens ?? 0,
-								completion_tokens: incompleteUsage.output_tokens ?? 0,
-								total_tokens: incompleteUsage.total_tokens ?? 0,
-								...(incompleteUsage.output_tokens_details?.reasoning_tokens && {
-									reasoning_tokens:
-										incompleteUsage.output_tokens_details.reasoning_tokens,
-								}),
-								...(incompleteUsage.input_tokens_details?.cached_tokens && {
-									prompt_tokens_details: {
-										cached_tokens:
-											incompleteUsage.input_tokens_details.cached_tokens,
-									},
-								}),
-							};
-						}
 						const reason = data.response?.incomplete_details?.reason;
 						// Map incomplete reason to appropriate finish_reason
 						const mappedFinishReason =
@@ -1033,7 +1024,7 @@ export function transformStreamingToOpenai(
 									finish_reason: mappedFinishReason,
 								},
 							],
-							usage,
+							usage: mapOpenAIResponsesUsage(data.response?.usage),
 						};
 						break;
 					}

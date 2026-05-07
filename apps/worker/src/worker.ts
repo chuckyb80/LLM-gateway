@@ -266,7 +266,7 @@ export async function processAutoTopUp(): Promise<void> {
 
 		// Filter organizations that need top-up based on credits vs threshold
 		const filteredOrgs = orgsNeedingTopUp.filter((org) => {
-			const credits = Number(org.credits || 0);
+			const credits = Number(org.credits ?? 0);
 			const threshold = Number(org.autoTopUpThreshold ?? 10);
 			return credits < threshold;
 		});
@@ -834,10 +834,10 @@ export async function batchProcessLogs(): Promise<void> {
 					// First, try to deduct from dev plan credits if available
 					if (org && org.devPlan !== "none") {
 						const devPlanCreditsLimit = new Decimal(
-							org.devPlanCreditsLimit || "0",
+							org.devPlanCreditsLimit ?? "0",
 						);
 						const devPlanCreditsUsed = new Decimal(
-							org.devPlanCreditsUsed || "0",
+							org.devPlanCreditsUsed ?? "0",
 						);
 						const devPlanRemaining =
 							devPlanCreditsLimit.minus(devPlanCreditsUsed);

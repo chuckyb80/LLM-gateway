@@ -7,6 +7,10 @@ export async function clearCache() {
 	await redisClient.flushdb();
 }
 
+export async function processPendingLogs() {
+	await processLogQueue();
+}
+
 /**
  * Helper function to wait for logs to be processed by the worker
  * @param expectedCount The expected number of logs

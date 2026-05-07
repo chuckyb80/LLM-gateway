@@ -384,13 +384,18 @@ export function LogCard({
 	});
 
 	const detailUrl = getDetailUrl?.(log.id);
+	const isClientError = log.unifiedFinishReason === "client_error";
 
 	// Status icon logic
 	let StatusIcon = CheckCircle2;
 	let color = "text-green-500";
 	let bgColor = "bg-green-100 dark:bg-green-900/30";
 
-	if (log.hasError || log.unifiedFinishReason === "error") {
+	if (isClientError) {
+		StatusIcon = AlertCircle;
+		color = "text-orange-500";
+		bgColor = "bg-orange-100 dark:bg-orange-900/30";
+	} else if (log.hasError || log.unifiedFinishReason === "error") {
 		StatusIcon = AlertCircle;
 		color = "text-red-500";
 		bgColor = "bg-red-100 dark:bg-red-900/30";
@@ -475,11 +480,18 @@ export function LogCard({
 							)}
 							<Badge
 								variant={
-									log.hasError
-										? "destructive"
-										: log.unifiedFinishReason === "content_filter"
+									isClientError
+										? "outline"
+										: log.hasError
 											? "destructive"
-											: "default"
+											: log.unifiedFinishReason === "content_filter"
+												? "destructive"
+												: "default"
+								}
+								className={
+									isClientError
+										? "border-orange-300 bg-orange-50 text-orange-600 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+										: undefined
 								}
 							>
 								{log.unifiedFinishReason}
