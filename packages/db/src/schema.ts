@@ -1664,6 +1664,8 @@ export const projectHourlyStats = pgTable(
 		totalTokens: decimal().notNull().default("0"),
 		reasoningTokens: decimal().notNull().default("0"),
 		cachedTokens: decimal().notNull().default("0"),
+		imageInputTokens: decimal().notNull().default("0"),
+		imageOutputTokens: decimal().notNull().default("0"),
 		// Costs
 		cost: real().notNull().default(0),
 		inputCost: real().notNull().default(0),
@@ -1728,6 +1730,8 @@ export const projectHourlyModelStats = pgTable(
 		totalTokens: decimal().notNull().default("0"),
 		reasoningTokens: decimal().notNull().default("0"),
 		cachedTokens: decimal().notNull().default("0"),
+		imageInputTokens: decimal().notNull().default("0"),
+		imageOutputTokens: decimal().notNull().default("0"),
 		// Costs
 		cost: real().notNull().default(0),
 		inputCost: real().notNull().default(0),
@@ -1814,6 +1818,8 @@ export const apiKeyHourlyStats = pgTable(
 		totalTokens: decimal().notNull().default("0"),
 		reasoningTokens: decimal().notNull().default("0"),
 		cachedTokens: decimal().notNull().default("0"),
+		imageInputTokens: decimal().notNull().default("0"),
+		imageOutputTokens: decimal().notNull().default("0"),
 		// Costs
 		cost: real().notNull().default(0),
 		inputCost: real().notNull().default(0),
@@ -1889,6 +1895,8 @@ export const apiKeyHourlyModelStats = pgTable(
 		totalTokens: decimal().notNull().default("0"),
 		reasoningTokens: decimal().notNull().default("0"),
 		cachedTokens: decimal().notNull().default("0"),
+		imageInputTokens: decimal().notNull().default("0"),
+		imageOutputTokens: decimal().notNull().default("0"),
 		// Costs
 		cost: real().notNull().default(0),
 		inputCost: real().notNull().default(0),

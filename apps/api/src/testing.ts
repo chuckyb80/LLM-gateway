@@ -123,6 +123,14 @@ function getCommonAggregationFields() {
 			sql<string>`coalesce(sum(cast(${tables.log.cachedTokens} as numeric)), 0)`.as(
 				"cachedTokens",
 			),
+		imageInputTokens:
+			sql<string>`coalesce(sum(cast(${tables.log.imageInputTokens} as numeric)), 0)`.as(
+				"imageInputTokens",
+			),
+		imageOutputTokens:
+			sql<string>`coalesce(sum(cast(${tables.log.imageOutputTokens} as numeric)), 0)`.as(
+				"imageOutputTokens",
+			),
 		cost: sql<number>`coalesce(sum(${tables.log.cost}), 0)`.as("cost"),
 		inputCost: sql<number>`coalesce(sum(${tables.log.inputCost}), 0)`.as(
 			"inputCost",
