@@ -177,12 +177,69 @@ import type { OriginalRequestParams } from "./tools/resolve-provider-context.js"
 import type { ServerTypes } from "@/vars.js";
 
 /**
- * Filter expanded region entries to only those with available API keys.
- * - Non-regional mappings (no region) pass through unchanged.
- * - The default region for a provider always passes (uses the base env key).
- * - Non-default regions only pass if a region-specific env key exists
- *   (e.g. LLM_ALIBABA_API_KEY__US_VIRGINIA).
+ * Collects the reasons why a provider mapping would be filtered out during routing.
+ * Returns an empty array if the provider passes all checks.
  */
+function getProviderFilterReasons(
+	provider: ProviderModelMapping,
+	options: {
+		webSearchTool?: boolean;
+		responseFormatType?: string;
+		hasImages?: boolean;
+		hasTools?: boolean;
+		reasoningEffort?: string;
+		reasoningMaxTokens?: number;
+		noReasoning?: boolean;
+		maxTokens?: number;
+	},
+): string[] {
+	const reasons: string[] = [];
+
+	if (options.noReasoning && provider.reasoning === true) {
+		reasons.push("no_reasoning requested but provider has reasoning");
+	}
+	if (options.reasoningEffort !== undefined && provider.reasoning !== true) {
+		reasons.push("reasoning_effort not supported");
+	}
+	if (
+		options.reasoningMaxTokens !== undefined &&
+		provider.reasoningMaxTokens !== true
+	) {
+		reasons.push("reasoning_max_tokens not supported");
+	}
+	if (options.hasTools && provider.tools !== true) {
+		reasons.push("tools not supported");
+	}
+	if (options.webSearchTool && provider.webSearch !== true) {
+		reasons.push("web_search not supported");
+	}
+	if (
+		(options.responseFormatType === "json_object" ||
+			options.responseFormatType === "json_schema") &&
+		provider.jsonOutput !== true
+	) {
+		reasons.push("json_output not supported");
+	}
+	if (
+		options.responseFormatType === "json_schema" &&
+		provider.jsonOutputSchema !== true
+	) {
+		reasons.push("json_schema not supported");
+	}
+	if (options.hasImages && provider.vision !== true) {
+		reasons.push("vision not supported");
+	}
+	if (
+		options.maxTokens !== undefined &&
+		provider.maxOutput !== undefined &&
+		options.maxTokens > provider.maxOutput
+	) {
+		reasons.push("max_tokens exceeds provider limit");
+	}
+
+	return reasons;
+}
+
 /**
  * Inject stream=true and partial_images=1 into an OpenAI/Azure gpt-image-*
  * request body so the upstream call uses SSE. The single partial keeps the
@@ -1657,8 +1714,22 @@ chat.openapi(completions, async (c) => {
 
 		let selectedModel: ModelDefinition | undefined;
 		let selectedProviders: any[] = [];
+		let selectedFilteredProviders: Array<{
+			providerId: string;
+			reasons: string[];
+		}> = [];
 		let lowestPrice = Number.MAX_VALUE;
 		const now = new Date(); // Cache current time for deprecation checks
+		const autoFilterOpts = {
+			webSearchTool: !!webSearchTool,
+			responseFormatType: response_format?.type,
+			hasImages,
+			hasTools: tools !== undefined || tool_choice !== undefined,
+			reasoningEffort: reasoning_effort,
+			reasoningMaxTokens: reasoning_max_tokens,
+			noReasoning: no_reasoning,
+			maxTokens: max_tokens,
+		};
 
 		for (const modelDef of models) {
 			if (modelDef.id === "auto" || modelDef.id === "custom") {
@@ -1719,6 +1790,10 @@ chat.openapi(completions, async (c) => {
 				: availableModelProviders;
 
 			// Filter by context size requirement, reasoning capability, and deprecation status
+			const filteredOutForModel: Array<{
+				providerId: string;
+				reasons: string[];
+			}> = [];
 			const suitableProviders = cachedFilteredProviders.filter((provider) => {
 				// Skip deprecated provider mappings
 				if (provider.deprecatedAt && now > provider.deprecatedAt!) {
@@ -1729,68 +1804,27 @@ chat.openapi(completions, async (c) => {
 				const modelContextSize = provider.contextSize ?? 8192;
 				const contextSizeMet = modelContextSize >= requiredContextSize;
 
-				// If no_reasoning is true, exclude reasoning models
-				if (no_reasoning && provider.reasoning === true) {
+				if (!contextSizeMet) {
+					filteredOutForModel.push({
+						providerId: provider.providerId,
+						reasons: ["context_size too small"],
+					});
 					return false;
 				}
 
-				// Check reasoning capability if reasoning_effort is specified
-				if (reasoning_effort !== undefined && provider.reasoning !== true) {
+				const reasons = getProviderFilterReasons(
+					provider as ProviderModelMapping,
+					autoFilterOpts,
+				);
+				if (reasons.length > 0) {
+					filteredOutForModel.push({
+						providerId: provider.providerId,
+						reasons,
+					});
 					return false;
 				}
 
-				// Check reasoning.max_tokens support if specified
-				if (
-					reasoning_max_tokens !== undefined &&
-					provider.reasoningMaxTokens !== true
-				) {
-					return false;
-				}
-
-				// Check tool capability if tools or tool_choice is specified
-				if (
-					(tools !== undefined || tool_choice !== undefined) &&
-					provider.tools !== true
-				) {
-					return false;
-				}
-
-				// Check web search capability if web search tool is requested
-				if (webSearchTool && provider.webSearch !== true) {
-					return false;
-				}
-
-				// Check JSON output capability if json_object or json_schema response format is requested
-				if (
-					response_format?.type === "json_object" ||
-					response_format?.type === "json_schema"
-				) {
-					if (provider.jsonOutput !== true) {
-						return false;
-					}
-				}
-
-				// Check JSON schema output capability if json_schema response format is requested
-				if (response_format?.type === "json_schema") {
-					if (provider.jsonOutputSchema !== true) {
-						return false;
-					}
-				}
-
-				// Check vision capability if images are present in messages
-				if (hasImages && provider.vision !== true) {
-					return false;
-				}
-
-				if (
-					max_tokens !== undefined &&
-					provider.maxOutput !== undefined &&
-					max_tokens > provider.maxOutput
-				) {
-					return false;
-				}
-
-				return contextSizeMet;
+				return true;
 			});
 
 			if (suitableProviders.length > 0) {
@@ -1803,6 +1837,7 @@ chat.openapi(completions, async (c) => {
 						lowestPrice = totalPrice;
 						selectedModel = modelDef;
 						selectedProviders = suitableProviders;
+						selectedFilteredProviders = filteredOutForModel;
 					}
 				}
 			}
@@ -1849,6 +1884,9 @@ chat.openapi(completions, async (c) => {
 				routingMetadata = {
 					...cheapestResult.metadata,
 					...getNoFallbackRoutingMetadata(noFallback, xNoFallbackHeaderSet),
+					...(selectedFilteredProviders.length > 0
+						? { filteredProviders: selectedFilteredProviders }
+						: {}),
 				};
 			} else {
 				// Fallback to first available provider if price comparison fails
@@ -2299,24 +2337,45 @@ chat.openapi(completions, async (c) => {
 				// Filter model providers to only those available (excluding the low-uptime one)
 				// If web search is requested, also filter to providers that support it
 				// If JSON output is requested, also filter to providers that support it
-				const availableModelProviders = filterEligibleModelProviders(
-					preferConcreteRegionalMappings(expandedIamFilteredModelProviders),
-					{
-						allProviderVariants: modelInfo.providers,
-						availableProviders,
-						webSearchTool,
-						responseFormatType: response_format?.type,
-						hasImages,
-						maxTokens: max_tokens,
-						reasoningEffort: reasoning_effort,
-					},
-				).filter(
-					(provider) =>
-						!(
-							provider.providerId === usedProvider &&
-							provider.region === usedRegion
-						),
-				);
+				const filteredOutProvidersFallback: Array<{
+					providerId: string;
+					reasons: string[];
+				}> = [];
+				const fallbackFilterOpts = {
+					webSearchTool: !!webSearchTool,
+					responseFormatType: response_format?.type,
+					hasImages,
+					hasTools: tools !== undefined || tool_choice !== undefined,
+					reasoningEffort: reasoning_effort,
+					reasoningMaxTokens: reasoning_max_tokens,
+					noReasoning: no_reasoning,
+					maxTokens: max_tokens,
+				};
+				const availableModelProviders = preferConcreteRegionalMappings(
+					expandedIamFilteredModelProviders,
+				).filter((provider) => {
+					if (!availableProviders.includes(provider.providerId)) {
+						return false;
+					}
+					if (
+						provider.providerId === usedProvider &&
+						provider.region === usedRegion
+					) {
+						return false;
+					}
+					const reasons = getProviderFilterReasons(
+						provider as ProviderModelMapping,
+						fallbackFilterOpts,
+					);
+					if (reasons.length > 0) {
+						filteredOutProvidersFallback.push({
+							providerId: provider.providerId,
+							reasons,
+						});
+						return false;
+					}
+					return true;
+				});
 
 				const uptimeFallbackCandidates = await pickNonRateLimitedCandidates(
 					project.organizationId,
@@ -2427,6 +2486,9 @@ chat.openapi(completions, async (c) => {
 										noFallback,
 										xNoFallbackHeaderSet,
 									),
+									...(filteredOutProvidersFallback.length > 0
+										? { filteredProviders: filteredOutProvidersFallback }
+										: {}),
 								};
 							}
 						}
@@ -2482,20 +2544,64 @@ chat.openapi(completions, async (c) => {
 				}
 			}
 
-			// Filter model providers to only those eligible for this request
-			const availableModelProviders = filterEligibleModelProviders(
-				preferConcreteRegionalMappings(expandedIamFilteredModelProviders),
-				{
-					allProviderVariants: modelInfo.providers,
-					availableProviders,
-					providerLockedRegions,
-					webSearchTool,
-					responseFormatType: response_format?.type,
-					hasImages,
-					maxTokens: max_tokens,
-					reasoningEffort: reasoning_effort,
-				},
-			);
+			// Filter model providers to only those available
+			// If web search is requested, also filter to providers that support it
+			// If JSON output is requested, also filter to providers that support it
+			const filteredOutProvidersDirect: Array<{
+				providerId: string;
+				reasons: string[];
+			}> = [];
+			const directFilterOpts = {
+				webSearchTool: !!webSearchTool,
+				responseFormatType: response_format?.type,
+				hasImages,
+				hasTools: tools !== undefined || tool_choice !== undefined,
+				reasoningEffort: reasoning_effort,
+				reasoningMaxTokens: reasoning_max_tokens,
+				noReasoning: no_reasoning,
+				maxTokens: max_tokens,
+			};
+			const availableModelProviders = preferConcreteRegionalMappings(
+				expandedIamFilteredModelProviders,
+			).filter((provider) => {
+				if (!availableProviders.includes(provider.providerId)) {
+					return false;
+				}
+				const lockedRegion = providerLockedRegions.get(provider.providerId);
+				if (
+					lockedRegion &&
+					provider.region &&
+					provider.region !== lockedRegion
+				) {
+					return false;
+				}
+				const reasons = getProviderFilterReasons(
+					provider as ProviderModelMapping,
+					directFilterOpts,
+				);
+				if (reasons.length > 0) {
+					filteredOutProvidersDirect.push({
+						providerId: provider.providerId,
+						reasons,
+					});
+					return false;
+				}
+				// Prefer non-reasoning variants when the request does not ask for reasoning.
+				if (reasoning_effort === undefined && !no_reasoning) {
+					const hasNonReasoningAlternative = modelInfo.providers.some(
+						(p) =>
+							p.providerId === provider.providerId &&
+							(p as ProviderModelMapping).reasoning !== true,
+					);
+					if (
+						hasNonReasoningAlternative &&
+						(provider as ProviderModelMapping).reasoning === true
+					) {
+						return false;
+					}
+				}
+				return true;
+			});
 
 			if (availableModelProviders.length === 0) {
 				throw new HTTPException(400, {
@@ -2593,6 +2699,9 @@ chat.openapi(completions, async (c) => {
 						{
 							...cheapestResult.metadata,
 							...getNoFallbackRoutingMetadata(noFallback, xNoFallbackHeaderSet),
+							...(filteredOutProvidersDirect.length > 0
+								? { filteredProviders: filteredOutProvidersDirect }
+								: {}),
 						},
 						contentFilterMatched,
 						contentFilterRoutingExcludedProviders,
@@ -3987,6 +4096,7 @@ chat.openapi(completions, async (c) => {
 	};
 
 	// Strip unsupported parameters based on model's supportedParameters
+	const strippedParameters: string[] = [];
 	if (finalModelInfo) {
 		const providerMapping = finalModelInfo.providers.find(
 			(p) =>
@@ -3998,26 +4108,35 @@ chat.openapi(completions, async (c) => {
 		if (supported && supported.length > 0) {
 			if (temperature !== undefined && !supported.includes("temperature")) {
 				temperature = undefined;
+				strippedParameters.push("temperature");
 			}
 			if (top_p !== undefined && !supported.includes("top_p")) {
 				top_p = undefined;
+				strippedParameters.push("top_p");
 			}
 			if (
 				frequency_penalty !== undefined &&
 				!supported.includes("frequency_penalty")
 			) {
 				frequency_penalty = undefined;
+				strippedParameters.push("frequency_penalty");
 			}
 			if (
 				presence_penalty !== undefined &&
 				!supported.includes("presence_penalty")
 			) {
 				presence_penalty = undefined;
+				strippedParameters.push("presence_penalty");
 			}
 			if (max_tokens !== undefined && !supported.includes("max_tokens")) {
 				max_tokens = undefined;
+				strippedParameters.push("max_tokens");
 			}
 		}
+	}
+	// Attach stripped parameters to routing metadata
+	if (strippedParameters.length > 0 && routingMetadata) {
+		routingMetadata.strippedParameters = strippedParameters;
 	}
 
 	// Anthropic does not allow temperature and top_p to be set simultaneously
