@@ -34,15 +34,24 @@ const moderationInputTextSchema = z.string().openapi({
 	example: "I want to harm someone.",
 });
 
-const moderationInputContentSchema = z
+const moderationTextContentSchema = z
 	.object({
-		type: z.enum(["text", "image_url"]).openapi({
+		type: z.literal("text").openapi({
 			description: "Input item type.",
 			example: "text",
 		}),
-		text: z.string().optional().openapi({
+		text: z.string().openapi({
 			description: "Text content for `type: text` items.",
 			example: "Please review this sentence.",
+		}),
+	})
+	.strict();
+
+const moderationImageContentSchema = z
+	.object({
+		type: z.literal("image_url").openapi({
+			description: "Input item type.",
+			example: "image_url",
 		}),
 		image_url: z
 			.object({
@@ -51,11 +60,17 @@ const moderationInputContentSchema = z
 					example: "https://example.com/image.png",
 				}),
 			})
-			.optional()
 			.openapi({
 				description: "Image payload for `type: image_url` items.",
 			}),
 	})
+	.strict();
+
+const moderationInputContentSchema = z
+	.discriminatedUnion("type", [
+		moderationTextContentSchema,
+		moderationImageContentSchema,
+	])
 	.openapi({
 		description: "Multimodal moderation input item.",
 	});
@@ -130,13 +145,59 @@ const moderationResponseSchema = z
 	});
 
 const moderationErrorSchema = z.object({
-	error: z.object({
-		message: z.string(),
-		type: z.string(),
-		param: z.string().nullable(),
-		code: z.string(),
-	}),
+	error: z
+		.object({
+			message: z.string(),
+			type: z.string().nullable().optional(),
+			param: z.string().nullable().optional(),
+			code: z.string().nullable().optional(),
+		})
+		.passthrough(),
 });
+
+const documentedErrorStatuses = [
+	400, 401, 403, 404, 410, 429, 500, 502, 503, 504,
+] as const;
+type DocumentedErrorStatus = (typeof documentedErrorStatuses)[number];
+
+function normalizeDocumentedErrorStatus(status: number): DocumentedErrorStatus {
+	return documentedErrorStatuses.includes(status as DocumentedErrorStatus)
+		? (status as DocumentedErrorStatus)
+		: 502;
+}
+
+function normalizeModerationErrorPayload(upstreamJson: unknown) {
+	if (typeof upstreamJson === "string") {
+		return {
+			error: {
+				message: upstreamJson,
+				type: "upstream_error",
+				param: null,
+				code: "upstream_error",
+			},
+		};
+	}
+
+	if (
+		upstreamJson &&
+		typeof upstreamJson === "object" &&
+		"error" in upstreamJson &&
+		upstreamJson.error &&
+		typeof upstreamJson.error === "object" &&
+		"message" in upstreamJson.error
+	) {
+		return upstreamJson;
+	}
+
+	return {
+		error: {
+			message: "Upstream request failed",
+			type: "upstream_error",
+			param: null,
+			code: "upstream_error",
+		},
+	};
+}
 
 const moderationRequestSchema = z.object({
 	input: moderationInputSchema,
@@ -650,20 +711,8 @@ moderations.openapi(createModeration, async (c): Promise<any> => {
 		});
 
 		return c.json(
-			(typeof upstreamJson === "string"
-				? { error: { message: upstreamJson } }
-				: upstreamJson) ?? { error: true },
-			upstreamResponse.status as
-				| 400
-				| 401
-				| 403
-				| 404
-				| 410
-				| 429
-				| 500
-				| 502
-				| 503
-				| 504,
+			normalizeModerationErrorPayload(upstreamJson),
+			normalizeDocumentedErrorStatus(upstreamResponse.status),
 		);
 	}
 

@@ -34,7 +34,9 @@ The `input` field accepts:
 
 - A single string
 - An array of strings
-- An array of multimodal content items with `text` and `image_url`
+- An array of multimodal content items where each item is type-driven and
+  contains only the fields relevant to its type, such as `text` for text items
+  or `image_url` for image items
 
 The default model is `omni-moderation-latest`.
 

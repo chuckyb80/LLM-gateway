@@ -1456,6 +1456,83 @@ describe("api", () => {
 		}
 	});
 
+	test("/v1/moderations rejects invalid multimodal items before proxying upstream", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+		const res = await app.request("/v1/moderations", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				input: [
+					{
+						type: "text",
+					},
+				],
+			}),
+		});
+
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({
+			error: {
+				message: "Invalid request parameters",
+				type: "invalid_request_error",
+				param: null,
+				code: "invalid_parameters",
+			},
+		});
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	test("/v1/moderations maps undocumented upstream statuses to 502", async () => {
+		await db.insert(tables.apiKey).values({
+			id: "token-id",
+			token: "real-token",
+			projectId: "project-id",
+			description: "Test API Key",
+			createdBy: "user-id",
+		});
+
+		await db.insert(tables.providerKey).values({
+			id: "provider-key-id",
+			token: "sk-test-key",
+			provider: "openai",
+			organizationId: "org-id",
+			baseUrl: mockServerUrl,
+		});
+
+		const requestId = "moderation-undocumented-status-request-id";
+		const res = await app.request("/v1/moderations", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: "Bearer real-token",
+				"x-request-id": requestId,
+			},
+			body: JSON.stringify({
+				input: "TRIGGER_STATUS_418 moderation upstream status",
+			}),
+		});
+
+		expect(res.status).toBe(502);
+		expect(await res.json()).toEqual({
+			error: {
+				message: "Mock error with status 418",
+				type: "server_error",
+				param: null,
+				code: "error_418",
+			},
+		});
+
+		const logs = await waitForLogs(1);
+		const moderationLog = logs.find((log) => log.requestId === requestId);
+
+		expect(moderationLog).toBeTruthy();
+		expect(moderationLog?.hasError).toBe(true);
+		expect(moderationLog?.errorDetails?.statusCode).toBe(418);
+	});
+
 	test("/v1/images/edits accepts Gemini size and aspect ratio", async () => {
 		await db.insert(tables.apiKey).values({
 			id: "token-id-image-edits",
