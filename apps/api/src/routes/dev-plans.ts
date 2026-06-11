@@ -789,11 +789,15 @@ devPlans.openapi(changeTier, async (c) => {
 			// The upgrade's proration invoice fires `invoice.payment_succeeded`,
 			// which records the `dev_plan_upgrade` transaction (with the amount
 			// collected) — so we don't record one here to avoid double-counting.
+			// A mid-cycle upgrade preserves the billing anchor, so persist Stripe's
+			// actual period end as the renewal date instead of letting the UI
+			// project a fresh cycle from the upgrade date.
 			await db
 				.update(tables.organization)
 				.set({
 					devPlan: newTier,
 					devPlanCreditsLimit: newCreditsLimit.toString(),
+					devPlanExpiresAt: new Date(periodEnd * 1000),
 				})
 				.where(eq(tables.organization.id, personalOrg.id));
 		} else {
