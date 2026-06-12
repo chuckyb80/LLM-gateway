@@ -366,6 +366,22 @@ export const providers: ProviderDefinition[] = [
 		website: "https://cloud.google.com/vertex-ai",
 		announcement: null,
 		priority: 0.9,
+		regionConfig: {
+			optionsKey: "vertex_openai_region",
+			defaultRegion: "global",
+			regions: [
+				{ id: "global", label: "Global (default)" },
+				{ id: "us-central1", label: "US Central 1" },
+				{ id: "us-south1", label: "US South 1" },
+				{ id: "us-west2", label: "US West 2" },
+			],
+			endpointMap: {
+				global: "https://aiplatform.googleapis.com",
+				"us-central1": "https://us-central1-aiplatform.googleapis.com",
+				"us-south1": "https://us-south1-aiplatform.googleapis.com",
+				"us-west2": "https://us-west2-aiplatform.googleapis.com",
+			},
+		},
 		termsUrl: "https://cloud.google.com/terms/service-terms",
 		privacyPolicyUrl: "https://cloud.google.com/terms/data-processing-addendum",
 		headquarters: "US",
