@@ -81,10 +81,6 @@ app.use("*", tracingMiddleware);
 app.use("*", requestLifecycleMiddleware);
 app.use("*", honoRequestLogger);
 
-// Shed excess load early (after logging, before auth/routing) so each pod
-// fast-fails with a retryable 529 instead of piling up unbounded connections.
-app.use("*", backpressureMiddleware);
-
 app.use(
 	"*",
 	cors({
@@ -101,6 +97,12 @@ app.use(
 		maxAge: 600,
 	}),
 );
+
+// Shed excess load early (after logging/CORS, before auth/routing) so each pod
+// fast-fails with a retryable 529 instead of piling up unbounded connections.
+// Registered after CORS so shed responses still carry the Access-Control-* headers
+// browser clients need to surface the 529 and Retry-After hint.
+app.use("*", backpressureMiddleware);
 
 // Middleware to check for application/json content type on POST requests
 // Excludes /mcp endpoint which handles its own content type validation

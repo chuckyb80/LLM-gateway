@@ -21,12 +21,6 @@ const port = Number(process.env.PORT) || 4001;
 // Default to 620s (above GCP's 600s) to ensure the LB closes first.
 const keepAliveTimeoutS = Number(process.env.KEEP_ALIVE_TIMEOUT_S) || 620;
 
-// Node's default accept backlog (511) overflows under connection bursts, which
-// the GKE L7 LB surfaces as "connection timeout". Raise it so bursts queue
-// instead of being dropped. The kernel caps the effective value at
-// net.core.somaxconn (4096 on modern COS nodes), so 1024 is honored.
-const listenBacklog = Number(process.env.LISTEN_BACKLOG) || 1024;
-
 let sdk: NodeSDK | null = null;
 
 async function startServer() {
@@ -41,12 +35,35 @@ async function startServer() {
 		// Continue without tracing
 	}
 
+	// Node's default accept backlog (511) overflows under connection bursts, which
+	// the GKE L7 LB surfaces as "connection timeout". Raise it so bursts queue
+	// instead of being dropped. The kernel caps the effective value at
+	// net.core.somaxconn (4096 on modern COS nodes), so 1024 is honored.
+	const listenBacklog = Number(process.env.LISTEN_BACKLOG) || 1024;
+
 	logger.info("Server starting", { port, backlog: listenBacklog });
 
 	const server = createAdaptorServer({ fetch: app.fetch });
-	server.listen({ port, backlog: listenBacklog }, () =>
-		logger.info("Server listening", { port, backlog: listenBacklog }),
-	);
+
+	// Wait for the bind to succeed (or fail) before resolving, so a bind error
+	// (e.g. EADDRINUSE) rejects startup → process.exit(1) instead of being
+	// swallowed by the log-and-continue uncaughtException handler, which would
+	// otherwise leave the process alive without accepting traffic.
+	await new Promise<void>((resolve, reject) => {
+		const onError = (error: Error) => {
+			server.off("listening", onListening);
+			reject(error);
+		};
+		const onListening = () => {
+			server.off("error", onError);
+			resolve();
+		};
+		server.once("error", onError);
+		server.once("listening", onListening);
+		server.listen({ port, backlog: listenBacklog });
+	});
+
+	logger.info("Server listening", { port, backlog: listenBacklog });
 	return server;
 }
 
