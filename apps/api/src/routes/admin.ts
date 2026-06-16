@@ -4796,7 +4796,10 @@ admin.openapi(getModelDetail, async (c) => {
 		});
 	}
 
-	// Global view
+	// Global view. Aggregate only the deduplicated mapping ids so providers with
+	// regional mappings are not double-counted (see resolveMappingHistoryIds).
+	const dedupedMappingIds = await resolveMappingHistoryIds({ modelId });
+
 	const [mappings, statsRows] = await Promise.all([
 		db
 			.select({
@@ -4865,7 +4868,12 @@ admin.openapi(getModelDetail, async (c) => {
 			.from(modelProviderMappingHistory)
 			.where(
 				and(
-					eq(modelProviderMappingHistory.modelId, modelId),
+					dedupedMappingIds.length > 0
+						? inArray(
+								modelProviderMappingHistory.modelProviderMappingId,
+								dedupedMappingIds,
+							)
+						: sql`false`,
 					gte(modelProviderMappingHistory.minuteTimestamp, startDate),
 				),
 			)
@@ -5540,6 +5548,59 @@ function getHourFloor(date: Date): string {
 	return d.toISOString();
 }
 
+/**
+ * Resolve the set of model_provider_mapping ids whose history rows represent the
+ * deduplicated traffic for the given provider and/or model filters.
+ *
+ * The worker folds regional traffic into the root (region-less) mapping's history
+ * rows while also writing the regional rows, so summing every row for a
+ * provider/model pair would double-count regional requests/tokens/cost. For each
+ * (provider, model) pair, prefer the root mapping (already the full total); fall
+ * back to the regional rows when no root mapping exists.
+ */
+async function resolveMappingHistoryIds(filters: {
+	providerId?: string;
+	modelId?: string;
+}): Promise<string[]> {
+	const mappings = await db
+		.select({
+			id: tables.modelProviderMapping.id,
+			providerId: tables.modelProviderMapping.providerId,
+			modelId: tables.modelProviderMapping.modelId,
+			region: tables.modelProviderMapping.region,
+		})
+		.from(tables.modelProviderMapping)
+		.where(
+			and(
+				filters.providerId
+					? eq(tables.modelProviderMapping.providerId, filters.providerId)
+					: undefined,
+				filters.modelId
+					? eq(tables.modelProviderMapping.modelId, filters.modelId)
+					: undefined,
+			),
+		);
+
+	const byPair = new Map<string, typeof mappings>();
+	for (const m of mappings) {
+		const key = `${m.providerId} ${m.modelId}`;
+		const list = byPair.get(key) ?? [];
+		list.push(m);
+		byPair.set(key, list);
+	}
+
+	const ids: string[] = [];
+	for (const list of byPair.values()) {
+		const root = list.find((m) => !m.region);
+		if (root) {
+			ids.push(root.id);
+		} else {
+			ids.push(...list.map((m) => m.id));
+		}
+	}
+	return ids;
+}
+
 function mapHistoryRows(
 	rows: {
 		minuteTimestamp: Date;
@@ -5623,83 +5684,70 @@ admin.openapi(getProviderHistory, async (c) => {
 	const query = c.req.valid("query");
 	const window = query.window ?? "4h";
 	const startDate = getHistoryStartDate(window);
-	const hourStartDate = new Date(startDate);
-	hourStartDate.setMinutes(0, 0, 0);
 
-	const [rows, costRows] = await Promise.all([
-		db
-			.select({
-				minuteTimestamp: modelProviderMappingHistory.minuteTimestamp,
-				logsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.logsCount})`.as(
-						"logs_count",
-					),
-				errorsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.errorsCount})`.as(
-						"errors_count",
-					),
-				clientErrorsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.clientErrorsCount})`.as(
-						"client_errors_count",
-					),
-				gatewayErrorsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.gatewayErrorsCount})`.as(
-						"gateway_errors_count",
-					),
-				upstreamErrorsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.upstreamErrorsCount})`.as(
-						"upstream_errors_count",
-					),
-				cachedCount:
-					sql<number>`SUM(${modelProviderMappingHistory.cachedCount})`.as(
-						"cached_count",
-					),
-				totalDuration:
-					sql<number>`SUM(${modelProviderMappingHistory.totalDuration})`.as(
-						"total_duration",
-					),
-				totalTimeToFirstToken:
-					sql<number>`SUM(${modelProviderMappingHistory.totalTimeToFirstToken})`.as(
-						"total_ttft",
-					),
-				totalTokens:
-					sql<number>`SUM(${modelProviderMappingHistory.totalTokens})`.as(
-						"total_tokens",
-					),
-			})
-			.from(modelProviderMappingHistory)
-			.where(
-				and(
-					eq(modelProviderMappingHistory.providerId, providerId),
-					gte(modelProviderMappingHistory.minuteTimestamp, startDate),
+	// Provider history is derived solely from the per-minute mapping history table,
+	// including cost — never from the project hourly rollup. Aggregate only the
+	// deduplicated mapping ids so models with regional mappings are not
+	// double-counted (see resolveMappingHistoryIds).
+	const mappingIds = await resolveMappingHistoryIds({ providerId });
+
+	if (mappingIds.length === 0) {
+		return c.json({ data: [] });
+	}
+
+	const rows = await db
+		.select({
+			minuteTimestamp: modelProviderMappingHistory.minuteTimestamp,
+			logsCount: sql<number>`SUM(${modelProviderMappingHistory.logsCount})`.as(
+				"logs_count",
+			),
+			errorsCount:
+				sql<number>`SUM(${modelProviderMappingHistory.errorsCount})`.as(
+					"errors_count",
 				),
-			)
-			.groupBy(modelProviderMappingHistory.minuteTimestamp)
-			.orderBy(asc(modelProviderMappingHistory.minuteTimestamp)),
-		db
-			.select({
-				hourTimestamp: projectHourlyModelStats.hourTimestamp,
-				cost: sql<number>`SUM(${projectHourlyModelStats.cost})`,
-			})
-			.from(projectHourlyModelStats)
-			.where(
-				and(
-					eq(projectHourlyModelStats.usedProvider, providerId),
-					gte(projectHourlyModelStats.hourTimestamp, hourStartDate),
+			clientErrorsCount:
+				sql<number>`SUM(${modelProviderMappingHistory.clientErrorsCount})`.as(
+					"client_errors_count",
 				),
-			)
-			.groupBy(projectHourlyModelStats.hourTimestamp),
-	]);
+			gatewayErrorsCount:
+				sql<number>`SUM(${modelProviderMappingHistory.gatewayErrorsCount})`.as(
+					"gateway_errors_count",
+				),
+			upstreamErrorsCount:
+				sql<number>`SUM(${modelProviderMappingHistory.upstreamErrorsCount})`.as(
+					"upstream_errors_count",
+				),
+			cachedCount:
+				sql<number>`SUM(${modelProviderMappingHistory.cachedCount})`.as(
+					"cached_count",
+				),
+			totalDuration:
+				sql<number>`SUM(${modelProviderMappingHistory.totalDuration})`.as(
+					"total_duration",
+				),
+			totalTimeToFirstToken:
+				sql<number>`SUM(${modelProviderMappingHistory.totalTimeToFirstToken})`.as(
+					"total_ttft",
+				),
+			totalTokens:
+				sql<number>`SUM(${modelProviderMappingHistory.totalTokens})`.as(
+					"total_tokens",
+				),
+			totalCost: sql<number>`SUM(${modelProviderMappingHistory.totalCost})`.as(
+				"total_cost",
+			),
+		})
+		.from(modelProviderMappingHistory)
+		.where(
+			and(
+				inArray(modelProviderMappingHistory.modelProviderMappingId, mappingIds),
+				gte(modelProviderMappingHistory.minuteTimestamp, startDate),
+			),
+		)
+		.groupBy(modelProviderMappingHistory.minuteTimestamp)
+		.orderBy(asc(modelProviderMappingHistory.minuteTimestamp));
 
-	const costByHour = new Map<string, number>(
-		costRows.map((r) => {
-			const d = new Date(r.hourTimestamp);
-			d.setMinutes(0, 0, 0);
-			return [d.toISOString(), Number(r.cost)];
-		}),
-	);
-
-	return c.json({ data: mapHistoryRows(rows, costByHour) });
+	return c.json({ data: mapHistoryRows(rows) });
 });
 
 // Model history
@@ -5906,218 +5954,145 @@ admin.openapi(getMappingHistory, async (c) => {
 		});
 	}
 
-	const [minuteRows, hourlyRows] = await Promise.all([
-		db
-			.select({
-				minuteTimestamp: modelProviderMappingHistory.minuteTimestamp,
-				logsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.logsCount})`.as(
-						"logs_count",
-					),
-				errorsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.errorsCount})`.as(
-						"errors_count",
-					),
-				clientErrorsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.clientErrorsCount})`.as(
-						"client_errors_count",
-					),
-				gatewayErrorsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.gatewayErrorsCount})`.as(
-						"gateway_errors_count",
-					),
-				upstreamErrorsCount:
-					sql<number>`SUM(${modelProviderMappingHistory.upstreamErrorsCount})`.as(
-						"upstream_errors_count",
-					),
-				cachedCount:
-					sql<number>`SUM(${modelProviderMappingHistory.cachedCount})`.as(
-						"cached_count",
-					),
-				totalDuration:
-					sql<number>`SUM(${modelProviderMappingHistory.totalDuration})`.as(
-						"total_duration",
-					),
-				totalTimeToFirstToken:
-					sql<number>`SUM(${modelProviderMappingHistory.totalTimeToFirstToken})`.as(
-						"total_ttft",
-					),
-				totalTokens:
-					sql<number>`SUM(${modelProviderMappingHistory.totalTokens})`.as(
-						"total_tokens",
-					),
-				totalCost:
-					sql<number>`SUM(${modelProviderMappingHistory.totalCost})`.as(
-						"total_cost",
-					),
-			})
-			.from(modelProviderMappingHistory)
-			.where(
-				and(
-					eq(modelProviderMappingHistory.providerId, providerId),
-					eq(modelProviderMappingHistory.modelId, modelId),
-					gte(modelProviderMappingHistory.minuteTimestamp, startDate),
-				),
-			)
-			.groupBy(modelProviderMappingHistory.minuteTimestamp)
-			.orderBy(asc(modelProviderMappingHistory.minuteTimestamp)),
-		db
-			.select({
-				hourTimestamp: projectHourlyModelStats.hourTimestamp,
-				logsCount: sql<number>`SUM(${projectHourlyModelStats.requestCount})`.as(
-					"logs_count",
-				),
-				errorsCount: sql<number>`SUM(${projectHourlyModelStats.errorCount})`.as(
+	// The global provider/model/mapping admin views derive history solely from the
+	// per-minute mapping history table — never from the project hourly rollup
+	// (projectHourlyModelStats), which only covers the live hour and would leave
+	// historical windows empty.
+	//
+	// Regional traffic is folded into the root mapping's history rows, so aggregate
+	// only the deduplicated mapping ids to avoid double-counting (see
+	// resolveMappingHistoryIds).
+	const mappingIds = await resolveMappingHistoryIds({ providerId, modelId });
+
+	if (mappingIds.length === 0) {
+		return c.json({ data: [] });
+	}
+
+	const minuteRows = await db
+		.select({
+			minuteTimestamp: modelProviderMappingHistory.minuteTimestamp,
+			logsCount: sql<number>`SUM(${modelProviderMappingHistory.logsCount})`.as(
+				"logs_count",
+			),
+			errorsCount:
+				sql<number>`SUM(${modelProviderMappingHistory.errorsCount})`.as(
 					"errors_count",
 				),
-				cachedCount: sql<number>`SUM(${projectHourlyModelStats.cacheCount})`.as(
+			clientErrorsCount:
+				sql<number>`SUM(${modelProviderMappingHistory.clientErrorsCount})`.as(
+					"client_errors_count",
+				),
+			gatewayErrorsCount:
+				sql<number>`SUM(${modelProviderMappingHistory.gatewayErrorsCount})`.as(
+					"gateway_errors_count",
+				),
+			upstreamErrorsCount:
+				sql<number>`SUM(${modelProviderMappingHistory.upstreamErrorsCount})`.as(
+					"upstream_errors_count",
+				),
+			cachedCount:
+				sql<number>`SUM(${modelProviderMappingHistory.cachedCount})`.as(
 					"cached_count",
 				),
-				totalTokens:
-					sql<number>`SUM(CAST(${projectHourlyModelStats.totalTokens} AS NUMERIC))`.as(
-						"total_tokens",
-					),
-				cost: sql<number>`SUM(${projectHourlyModelStats.cost})`.as("cost"),
-			})
-			.from(projectHourlyModelStats)
-			.where(
-				and(
-					eq(projectHourlyModelStats.usedProvider, providerId),
-					eq(projectHourlyModelStats.usedModel, modelId),
-					gte(projectHourlyModelStats.hourTimestamp, hourStartDate),
+			totalDuration:
+				sql<number>`SUM(${modelProviderMappingHistory.totalDuration})`.as(
+					"total_duration",
 				),
-			)
-			.groupBy(projectHourlyModelStats.hourTimestamp)
-			.orderBy(asc(projectHourlyModelStats.hourTimestamp)),
-	]);
+			totalTimeToFirstToken:
+				sql<number>`SUM(${modelProviderMappingHistory.totalTimeToFirstToken})`.as(
+					"total_ttft",
+				),
+			totalTokens:
+				sql<number>`SUM(${modelProviderMappingHistory.totalTokens})`.as(
+					"total_tokens",
+				),
+			totalCost: sql<number>`SUM(${modelProviderMappingHistory.totalCost})`.as(
+				"total_cost",
+			),
+		})
+		.from(modelProviderMappingHistory)
+		.where(
+			and(
+				inArray(modelProviderMappingHistory.modelProviderMappingId, mappingIds),
+				gte(modelProviderMappingHistory.minuteTimestamp, startDate),
+			),
+		)
+		.groupBy(modelProviderMappingHistory.minuteTimestamp)
+		.orderBy(asc(modelProviderMappingHistory.minuteTimestamp));
 
-	const hasMinuteData = minuteRows.some((r) => Number(r.logsCount) > 0);
-
-	// For short windows with minute data, return minute-level granularity
+	// For short windows, return minute-level granularity.
 	const dayWindows = new Set(["1d", "2d", "7d"]);
-	if (hasMinuteData && !dayWindows.has(window)) {
+	if (!dayWindows.has(window)) {
 		return c.json({ data: mapHistoryRows(minuteRows) });
 	}
 
-	// For day windows or when minute data is missing, use hourly data as
-	// the timeline base and overlay latency from minute data where available.
-	// This ensures consistent chart granularity across all providers.
-	// When per-provider minute data is empty, fall back to model-level latency
-	// from model_history as an approximation.
-	const latencyByHour = new Map<
+	// For day windows, aggregate the per-minute mapping history into hourly
+	// buckets to keep the chart's point count manageable.
+	const byHour = new Map<
 		string,
 		{
+			logsCount: number;
+			errorsCount: number;
+			clientErrorsCount: number;
+			gatewayErrorsCount: number;
+			upstreamErrorsCount: number;
+			cachedCount: number;
 			totalDuration: number;
 			totalTtft: number;
-			logsCount: number;
-			nonCached: number;
+			totalTokens: number;
+			totalCost: number;
 		}
-	>();
-
-	if (hasMinuteData) {
-		for (const r of minuteRows) {
-			const hk = getHourFloor(r.minuteTimestamp);
-			const existing = latencyByHour.get(hk);
-			const logs = Number(r.logsCount);
-			const cached = Number(r.cachedCount);
-			if (existing) {
-				existing.totalDuration += Number(r.totalDuration);
-				existing.totalTtft += Number(r.totalTimeToFirstToken);
-				existing.logsCount += logs;
-				existing.nonCached += logs - cached;
-			} else {
-				latencyByHour.set(hk, {
-					totalDuration: Number(r.totalDuration),
-					totalTtft: Number(r.totalTimeToFirstToken),
-					logsCount: logs,
-					nonCached: logs - cached,
-				});
-			}
-		}
-	} else if (hourlyRows.length > 0) {
-		// No per-provider minute data — use model_history for aggregate latency
-		const modelLatencyRows = await db
-			.select({
-				minuteTimestamp: modelHistory.minuteTimestamp,
-				logsCount: modelHistory.logsCount,
-				cachedCount: modelHistory.cachedCount,
-				totalDuration: modelHistory.totalDuration,
-				totalTimeToFirstToken: modelHistory.totalTimeToFirstToken,
-			})
-			.from(modelHistory)
-			.where(
-				and(
-					eq(modelHistory.modelId, modelId),
-					gte(modelHistory.minuteTimestamp, startDate),
-				),
-			);
-		for (const r of modelLatencyRows) {
-			const hk = getHourFloor(r.minuteTimestamp);
-			const existing = latencyByHour.get(hk);
-			const logs = Number(r.logsCount);
-			const cached = Number(r.cachedCount);
-			if (existing) {
-				existing.totalDuration += Number(r.totalDuration);
-				existing.totalTtft += Number(r.totalTimeToFirstToken);
-				existing.logsCount += logs;
-				existing.nonCached += logs - cached;
-			} else {
-				latencyByHour.set(hk, {
-					totalDuration: Number(r.totalDuration),
-					totalTtft: Number(r.totalTimeToFirstToken),
-					logsCount: logs,
-					nonCached: logs - cached,
-				});
-			}
-		}
-	}
-
-	const errorBreakdownByHour = new Map<
-		string,
-		{ client: number; gateway: number; upstream: number }
 	>();
 	for (const r of minuteRows) {
 		const hk = getHourFloor(r.minuteTimestamp);
-		const existing = errorBreakdownByHour.get(hk);
-		const client = Number(r.clientErrorsCount);
-		const gateway = Number(r.gatewayErrorsCount);
-		const upstream = Number(r.upstreamErrorsCount);
+		const existing = byHour.get(hk);
+		const values = {
+			logsCount: Number(r.logsCount),
+			errorsCount: Number(r.errorsCount),
+			clientErrorsCount: Number(r.clientErrorsCount),
+			gatewayErrorsCount: Number(r.gatewayErrorsCount),
+			upstreamErrorsCount: Number(r.upstreamErrorsCount),
+			cachedCount: Number(r.cachedCount),
+			totalDuration: Number(r.totalDuration),
+			totalTtft: Number(r.totalTimeToFirstToken),
+			totalTokens: Number(r.totalTokens),
+			totalCost: Number(r.totalCost),
+		};
 		if (existing) {
-			existing.client += client;
-			existing.gateway += gateway;
-			existing.upstream += upstream;
+			existing.logsCount += values.logsCount;
+			existing.errorsCount += values.errorsCount;
+			existing.clientErrorsCount += values.clientErrorsCount;
+			existing.gatewayErrorsCount += values.gatewayErrorsCount;
+			existing.upstreamErrorsCount += values.upstreamErrorsCount;
+			existing.cachedCount += values.cachedCount;
+			existing.totalDuration += values.totalDuration;
+			existing.totalTtft += values.totalTtft;
+			existing.totalTokens += values.totalTokens;
+			existing.totalCost += values.totalCost;
 		} else {
-			errorBreakdownByHour.set(hk, { client, gateway, upstream });
+			byHour.set(hk, values);
 		}
 	}
 
-	const data = hourlyRows.map((r) => {
-		const logsCount = Number(r.logsCount);
-		const errorsCount = Number(r.errorsCount);
-		const cachedCount = Number(r.cachedCount);
-		const hk = new Date(r.hourTimestamp).toISOString();
-		const latency = latencyByHour.get(hk);
-		const errorBreakdown = errorBreakdownByHour.get(hk);
-		return {
-			timestamp: hk,
-			logsCount,
-			errorsCount,
-			clientErrorsCount: errorBreakdown?.client ?? 0,
-			gatewayErrorsCount: errorBreakdown?.gateway ?? 0,
-			upstreamErrorsCount: errorBreakdown?.upstream ?? 0,
-			cachedCount,
-			avgTtft:
-				latency && latency.nonCached > 0
-					? Math.round(latency.totalTtft / latency.nonCached)
-					: null,
-			avgDuration:
-				latency && latency.logsCount > 0
-					? Math.round(latency.totalDuration / latency.logsCount)
-					: null,
-			totalTokens: Number(r.totalTokens),
-			totalCost: Number(r.cost),
-		};
-	});
+	const data = Array.from(byHour.entries())
+		.sort((a, b) => (a[0] < b[0] ? -1 : 1))
+		.map(([hk, v]) => {
+			const nonCached = v.logsCount - v.cachedCount;
+			return {
+				timestamp: hk,
+				logsCount: v.logsCount,
+				errorsCount: v.errorsCount,
+				clientErrorsCount: v.clientErrorsCount,
+				gatewayErrorsCount: v.gatewayErrorsCount,
+				upstreamErrorsCount: v.upstreamErrorsCount,
+				cachedCount: v.cachedCount,
+				avgTtft: nonCached > 0 ? Math.round(v.totalTtft / nonCached) : null,
+				avgDuration:
+					v.logsCount > 0 ? Math.round(v.totalDuration / v.logsCount) : null,
+				totalTokens: v.totalTokens,
+				totalCost: v.totalCost,
+			};
+		});
 
 	return c.json({ data });
 });
@@ -6194,6 +6169,10 @@ admin.openapi(getProviderDetail, async (c) => {
 		throw new HTTPException(404, { message: "Provider not found" });
 	}
 
+	// Aggregate only the deduplicated mapping ids so models with regional mappings
+	// are not double-counted (see resolveMappingHistoryIds).
+	const dedupedMappingIds = await resolveMappingHistoryIds({ providerId });
+
 	const [mappings, statsRows] = await Promise.all([
 		db
 			.select({
@@ -6246,7 +6225,12 @@ admin.openapi(getProviderDetail, async (c) => {
 			.from(modelProviderMappingHistory)
 			.where(
 				and(
-					eq(modelProviderMappingHistory.providerId, providerId),
+					dedupedMappingIds.length > 0
+						? inArray(
+								modelProviderMappingHistory.modelProviderMappingId,
+								dedupedMappingIds,
+							)
+						: sql`false`,
 					gte(modelProviderMappingHistory.minuteTimestamp, startDate),
 				),
 			)
@@ -6440,6 +6424,9 @@ admin.openapi(getMappingDetail, async (c) => {
 				eq(tables.modelProviderMapping.modelId, modelId),
 			),
 		)
+		// Prefer the root (region-less) mapping, whose history rows fold in regional
+		// traffic, so the displayed stats represent the full provider/model total.
+		.orderBy(asc(sql`${tables.modelProviderMapping.region} IS NOT NULL`))
 		.limit(1);
 
 	if (mappingRow.length === 0) {
@@ -6447,6 +6434,13 @@ admin.openapi(getMappingDetail, async (c) => {
 	}
 
 	const m = mappingRow[0];
+
+	// Aggregate the same deduplicated mapping ids the history chart uses so the
+	// stat cards and chart agree (see resolveMappingHistoryIds).
+	const dedupedMappingIds = await resolveMappingHistoryIds({
+		providerId,
+		modelId,
+	});
 
 	const [aggRow] = await db
 		.select({
@@ -6507,7 +6501,12 @@ admin.openapi(getMappingDetail, async (c) => {
 		.from(modelProviderMappingHistory)
 		.where(
 			and(
-				eq(modelProviderMappingHistory.modelProviderMappingId, m.id),
+				dedupedMappingIds.length > 0
+					? inArray(
+							modelProviderMappingHistory.modelProviderMappingId,
+							dedupedMappingIds,
+						)
+					: eq(modelProviderMappingHistory.modelProviderMappingId, m.id),
 				gte(modelProviderMappingHistory.minuteTimestamp, startDate),
 			),
 		);
