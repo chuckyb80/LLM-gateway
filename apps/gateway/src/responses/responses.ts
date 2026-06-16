@@ -10,6 +10,7 @@ import {
 	findProjectById,
 	findOrganizationById,
 } from "@/lib/cached-queries.js";
+import { internalForwardHeaders } from "@/lib/internal-forward.js";
 import {
 	setResponsesContext,
 	deleteResponsesContext,
@@ -330,6 +331,7 @@ responses.post("/", async (c) => {
 		"x-source": c.req.header("x-source") ?? "",
 		"x-debug": c.req.header("x-debug") ?? "",
 		"HTTP-Referer": c.req.header("HTTP-Referer") ?? "",
+		...internalForwardHeaders(),
 	};
 
 	// Pass Responses API context via in-memory Map (not headers) to avoid
@@ -694,6 +696,7 @@ responses.post("/compact", async (c) => {
 		"x-source": c.req.header("x-source") ?? "",
 		"x-debug": c.req.header("x-debug") ?? "",
 		"HTTP-Referer": c.req.header("HTTP-Referer") ?? "",
+		...internalForwardHeaders(),
 	};
 
 	const contextKey = compactionId;

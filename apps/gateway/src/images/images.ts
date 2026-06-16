@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 
 import { app } from "@/app.js";
+import { internalForwardHeaders } from "@/lib/internal-forward.js";
 
 import { parseDataUrl, processImageUrl } from "@llmgateway/actions";
 import { logger, toError } from "@llmgateway/logger";
@@ -318,6 +319,7 @@ function forwardHeaders(c: Context): Record<string, string> {
 		"x-debug": c.req.header("x-debug") ?? "",
 		...(noFallbackHeader !== null ? { "x-no-fallback": noFallbackHeader } : {}),
 		"HTTP-Referer": c.req.header("HTTP-Referer") ?? "",
+		...internalForwardHeaders(),
 	};
 }
 

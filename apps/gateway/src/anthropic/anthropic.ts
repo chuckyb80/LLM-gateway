@@ -7,6 +7,7 @@ import {
 	buildAnthropicErrorBody,
 	getAnthropicErrorType,
 } from "@/lib/error-response.js";
+import { internalForwardHeaders } from "@/lib/internal-forward.js";
 import { extractAnthropicSessionId } from "@/lib/session-id.js";
 
 import { logger, toError } from "@llmgateway/logger";
@@ -656,6 +657,7 @@ anthropic.openapi(messages, async (c) => {
 			"x-debug": c.req.header("x-debug") ?? "",
 			"HTTP-Referer": c.req.header("HTTP-Referer") ?? "",
 			...(sessionId ? { "x-session-id": sessionId } : {}),
+			...internalForwardHeaders(),
 		},
 		body: JSON.stringify(openaiRequest),
 	});
