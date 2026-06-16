@@ -3086,6 +3086,256 @@ describe("api", () => {
 		expect(Number(cachedLog?.promptTokens)).toBeGreaterThan(0);
 	});
 
+	test("/v1/chat/completions hybrid prefers provider key over regional env token", async () => {
+		await harness.setProjectMode("hybrid");
+
+		await db.insert(tables.apiKey).values({
+			id: "token-id",
+			token: "real-token",
+			projectId: "project-id",
+			description: "Test API Key",
+			createdBy: "user-id",
+		});
+
+		await db.insert(tables.providerKey).values({
+			id: "provider-key-id",
+			token: "sk-db-key",
+			provider: "alibaba",
+			organizationId: "org-id",
+			baseUrl: mockServerUrl,
+		});
+
+		const previousAlibabaRegionalKey =
+			process.env.LLM_ALIBABA_API_KEY__US_VIRGINIA;
+		const originalFetch = globalThis.fetch;
+		let sawAlibabaRequest = false;
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async (input, init) => {
+				const url =
+					typeof input === "string"
+						? input
+						: input instanceof URL
+							? input.toString()
+							: input.url;
+
+				if (url.startsWith(mockServerUrl)) {
+					sawAlibabaRequest = true;
+					const headers = new Headers(init?.headers);
+					expect(headers.get("authorization")).toBe("Bearer sk-db-key");
+				}
+
+				return await originalFetch(input as RequestInfo | URL, init);
+			});
+
+		try {
+			process.env.LLM_ALIBABA_API_KEY__US_VIRGINIA = "sk-env-key";
+
+			const res = await app.request("/v1/chat/completions", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer real-token",
+				},
+				body: JSON.stringify({
+					model: "alibaba/qwen-plus:us-virginia",
+					messages: [
+						{
+							role: "user",
+							content: "Hello from hybrid regional routing!",
+						},
+					],
+				}),
+			});
+
+			expect(res.status).toBe(200);
+			expect(sawAlibabaRequest).toBe(true);
+		} finally {
+			fetchSpy.mockRestore();
+			if (previousAlibabaRegionalKey === undefined) {
+				delete process.env.LLM_ALIBABA_API_KEY__US_VIRGINIA;
+			} else {
+				process.env.LLM_ALIBABA_API_KEY__US_VIRGINIA =
+					previousAlibabaRegionalKey;
+			}
+		}
+	});
+
+	test("/v1/chat/completions hybrid prefers keyed provider over credits-backed provider for gemini-2.5-flash-lite", async () => {
+		await harness.setProjectMode("hybrid");
+		await harness.setRoutingMetrics(
+			"gemini-2.5-flash-lite",
+			"google-ai-studio",
+			{
+				uptime: 90,
+				latency: 1200,
+				throughput: 5,
+			},
+		);
+		await harness.setRoutingMetrics("gemini-2.5-flash-lite", "google-vertex", {
+			uptime: 100,
+			latency: 10,
+			throughput: 500,
+		});
+
+		await db.insert(tables.apiKey).values({
+			id: "token-id",
+			token: "real-token",
+			projectId: "project-id",
+			description: "Test API Key",
+			createdBy: "user-id",
+		});
+
+		await db.insert(tables.providerKey).values({
+			id: "provider-key-id",
+			token: "studio-db-key",
+			provider: "google-ai-studio",
+			organizationId: "org-id",
+		});
+
+		const previousVertexKey = process.env.LLM_GOOGLE_VERTEX_API_KEY;
+		const previousGoogleCloudProject = process.env.LLM_GOOGLE_CLOUD_PROJECT;
+		const originalFetch = globalThis.fetch;
+		let selectedProvider: "google-ai-studio" | "google-vertex" | undefined;
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async (input, init) => {
+				const url =
+					typeof input === "string"
+						? input
+						: input instanceof URL
+							? input.toString()
+							: input.url;
+
+				if (
+					url.startsWith(
+						"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+					)
+				) {
+					selectedProvider = "google-ai-studio";
+					expect(new URL(url).searchParams.get("key")).toBe("studio-db-key");
+
+					const body = JSON.parse(String(init?.body ?? "{}"));
+					const userMessage =
+						body.contents?.find?.((content: { role?: string }) => {
+							return content.role === "user";
+						})?.parts?.[0]?.text ?? "";
+
+					return new Response(
+						JSON.stringify({
+							candidates: [
+								{
+									content: {
+										parts: [
+											{
+												text: `studio response: ${userMessage}`,
+											},
+										],
+										role: "model",
+									},
+									finishReason: "STOP",
+									index: 0,
+								},
+							],
+							usageMetadata: {
+								promptTokenCount: 10,
+								candidatesTokenCount: 20,
+								totalTokenCount: 30,
+							},
+						}),
+						{
+							status: 200,
+							headers: {
+								"Content-Type": "application/json",
+							},
+						},
+					);
+				}
+
+				if (
+					url.startsWith(
+						"https://aiplatform.googleapis.com/v1/projects/vertex-project/locations/global/publishers/google/models/gemini-2.5-flash-lite:generateContent",
+					)
+				) {
+					selectedProvider = "google-vertex";
+					expect(new URL(url).searchParams.get("key")).toBe("vertex-env-key");
+
+					return new Response(
+						JSON.stringify({
+							candidates: [
+								{
+									content: {
+										parts: [
+											{
+												text: "vertex response",
+											},
+										],
+										role: "model",
+									},
+									finishReason: "STOP",
+									index: 0,
+								},
+							],
+							usageMetadata: {
+								promptTokenCount: 10,
+								candidatesTokenCount: 20,
+								totalTokenCount: 30,
+							},
+						}),
+						{
+							status: 200,
+							headers: {
+								"Content-Type": "application/json",
+							},
+						},
+					);
+				}
+
+				return await originalFetch(input as RequestInfo | URL, init);
+			});
+
+		try {
+			process.env.LLM_GOOGLE_VERTEX_API_KEY = "vertex-env-key";
+			process.env.LLM_GOOGLE_CLOUD_PROJECT = "vertex-project";
+
+			const res = await app.request("/v1/chat/completions", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer real-token",
+				},
+				body: JSON.stringify({
+					model: "gemini-2.5-flash-lite",
+					messages: [
+						{
+							role: "user",
+							content: "Hello from hybrid provider routing!",
+						},
+					],
+				}),
+			});
+
+			expect(res.status).toBe(200);
+			expect(selectedProvider).toBe("google-ai-studio");
+
+			const json = await res.json();
+			expect(json.metadata.used_provider).toBe("google-ai-studio");
+			expect(json.choices[0].message.content).toContain("studio response");
+		} finally {
+			fetchSpy.mockRestore();
+			if (previousVertexKey === undefined) {
+				delete process.env.LLM_GOOGLE_VERTEX_API_KEY;
+			} else {
+				process.env.LLM_GOOGLE_VERTEX_API_KEY = previousVertexKey;
+			}
+			if (previousGoogleCloudProject === undefined) {
+				delete process.env.LLM_GOOGLE_CLOUD_PROJECT;
+			} else {
+				process.env.LLM_GOOGLE_CLOUD_PROJECT = previousGoogleCloudProject;
+			}
+		}
+	});
+
 	// test for model with multiple providers (llama-3.3-70b-instruct)
 	test.skip("/v1/chat/completions with model that has multiple providers", async () => {
 		await db.insert(tables.apiKey).values({
