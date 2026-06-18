@@ -335,6 +335,7 @@ export const providers: ProviderDefinition[] = [
 			optional: {
 				baseUrl: "LLM_GOOGLE_VERTEX_BASE_URL",
 				region: "LLM_GOOGLE_VERTEX_REGION",
+				tokenType: "LLM_GOOGLE_VERTEX_TOKEN_TYPE",
 			},
 		},
 		streaming: true,
@@ -454,6 +455,7 @@ export const providers: ProviderDefinition[] = [
 			},
 			optional: {
 				region: "LLM_QUARTZ_REGION",
+				tokenType: "LLM_QUARTZ_TOKEN_TYPE",
 			},
 		},
 		streaming: true,
