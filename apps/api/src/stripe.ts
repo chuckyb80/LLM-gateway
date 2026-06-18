@@ -477,6 +477,16 @@ export type FinalizeDevPlanResult =
 	| { status: "no_payment_method" }
 	| { status: "invalid_session"; reason: string };
 
+// The current billing period end is the authoritative renewal date. It lives on
+// the subscription item (not the subscription) in current Stripe API versions.
+// Returns null when the subscription has no items yet (e.g. mid-creation).
+function getSubscriptionPeriodEnd(
+	subscription: Stripe.Subscription,
+): Date | null {
+	const periodEnd = subscription.items.data[0]?.current_period_end;
+	return periodEnd ? new Date(periodEnd * 1000) : null;
+}
+
 function isStripePaymentIntent(value: unknown): value is Stripe.PaymentIntent {
 	if (!value || typeof value !== "object") {
 		return false;
@@ -894,6 +904,7 @@ export async function finalizeDevPlanSetupSession(
 			devPlanCreditsLimit: creditsLimit.toString(),
 			devPlanCreditsUsed: "0",
 			devPlanBillingCycleStart: new Date(),
+			devPlanExpiresAt: getSubscriptionPeriodEnd(subscription),
 			devPlanStripeSubscriptionId: subscription.id,
 			devPlanCancelled: false,
 			devPlanCycle,
@@ -2957,6 +2968,13 @@ export async function handleInvoicePaymentSucceeded(event: {
 		const creditsLimit = getDevPlanCreditsLimit(initialDevPlanTier);
 		const fingerprint = await getSubscriptionCardFingerprint(subscriptionId);
 
+		// First invoice line covers the initial period, so its end is the real
+		// `current_period_end` (= first renewal date).
+		const initialPeriodEnd = invoice.lines.data.reduce(
+			(max, line) => Math.max(max, line.period?.end ?? 0),
+			0,
+		);
+
 		const claimed = await db
 			.update(tables.organization)
 			.set({
@@ -2964,6 +2982,9 @@ export async function handleInvoicePaymentSucceeded(event: {
 				devPlanCreditsLimit: creditsLimit.toString(),
 				devPlanCreditsUsed: "0",
 				devPlanBillingCycleStart: new Date(),
+				devPlanExpiresAt: initialPeriodEnd
+					? new Date(initialPeriodEnd * 1000)
+					: undefined,
 				devPlanStripeSubscriptionId: subscriptionId,
 				devPlanCancelled: false,
 				devPlanCycle: initialDevPlanCycle,
@@ -3133,6 +3154,16 @@ export async function handleInvoicePaymentSucceeded(event: {
 			description: `Dev Plan ${organization.devPlan?.toUpperCase()} renewed`,
 		});
 
+		// The renewal invoice's line items cover the upcoming period, so the
+		// latest line period end is the new `current_period_end` (= next renewal
+		// date). Record it alongside the cycle reset so the dashboard reflects the
+		// new schedule immediately rather than waiting for the follow-up
+		// `customer.subscription.updated` event.
+		const renewedPeriodEnd = invoice.lines.data.reduce(
+			(max, line) => Math.max(max, line.period?.end ?? 0),
+			0,
+		);
+
 		// Reset credits used and update billing cycle start. Also reset the
 		// limit to the full tier allotment: mid-cycle tier changes leave the
 		// limit at a prorated value, and a fresh cycle should grant the tier's
@@ -3148,6 +3179,9 @@ export async function handleInvoicePaymentSucceeded(event: {
 				devPlanCreditsFrozen: false,
 				devPlanCreditsLimitBeforeFreeze: null,
 				devPlanBillingCycleStart: new Date(),
+				devPlanExpiresAt: renewedPeriodEnd
+					? new Date(renewedPeriodEnd * 1000)
+					: undefined,
 				devPlanCancelled: false,
 			})
 			.where(eq(tables.organization.id, organizationId));
