@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "878e1dcb-4cd0-4ad6-81bf-b2efb74e8b2b",
+  "id": "58b1a623-694e-4c21-92ef-a2efcde15338",
   "prevId": "703166e7-bf3c-4da9-93a1-bdbc81ad32f4",
   "ddl": [
     {
@@ -19534,13 +19534,6 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "project_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        },
-        {
           "value": "api_key_id",
           "isExpression": false,
           "asc": true,
@@ -19560,7 +19553,7 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "log_project_id_api_key_id_created_at_idx",
+      "name": "log_api_key_id_created_at_idx",
       "entityType": "indexes",
       "schema": "public",
       "table": "log"

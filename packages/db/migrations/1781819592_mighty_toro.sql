@@ -1,1 +1,0 @@
-CREATE INDEX "log_project_id_api_key_id_created_at_idx" ON "log" ("project_id","api_key_id","created_at");
