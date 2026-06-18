@@ -27,10 +27,8 @@ import { anthropic } from "./anthropic/anthropic.js";
 import { chat } from "./chat/chat.js";
 import { embeddingsRoute } from "./embeddings/route.js";
 import { imagesRoute } from "./images/route.js";
-import {
-	buildAnthropicErrorBody,
-	buildOpenAIErrorBody,
-} from "./lib/error-response.js";
+import { backpressureMiddleware } from "./lib/backpressure.js";
+import { renderGatewayError } from "./lib/error-response.js";
 import { mcpHandler, registerMcpOAuthRoutes } from "./mcp/mcp.js";
 import { tracingMiddleware } from "./middleware/tracing.js";
 import { models } from "./models/route.js";
@@ -40,8 +38,6 @@ import { speechRoute } from "./speech/route.js";
 import { videosRoute } from "./videos/route.js";
 
 import type { ServerTypes } from "./vars.js";
-import type { Context } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 export const config = {
 	servers: [
@@ -102,6 +98,12 @@ app.use(
 	}),
 );
 
+// Shed excess load early (after logging/CORS, before auth/routing) so each pod
+// fast-fails with a retryable 529 instead of piling up unbounded connections.
+// Registered after CORS so shed responses still carry the Access-Control-* headers
+// browser clients need to surface the 529 and Retry-After hint.
+app.use("*", backpressureMiddleware);
+
 // Middleware to check for application/json content type on POST requests
 // Excludes /mcp endpoint which handles its own content type validation
 // Excludes /oauth endpoints which accept form-urlencoded or JSON
@@ -123,22 +125,6 @@ app.use("*", async (c, next) => {
 	}
 	return await next();
 });
-
-// Renders a gateway-level error in a provider-compatible shape. The Anthropic
-// `/v1/messages` endpoint expects Anthropic's `{ type: "error", error: {...} }`
-// envelope; every other (OpenAI-compatible) endpoint expects OpenAI's
-// `{ error: { message, type, param, code } }` envelope.
-function renderGatewayError(
-	c: Context<ServerTypes>,
-	status: number,
-	message: string,
-) {
-	const jsonStatus = status as ContentfulStatusCode;
-	if (c.req.path.startsWith("/v1/messages")) {
-		return c.json(buildAnthropicErrorBody({ message, status }), jsonStatus);
-	}
-	return c.json(buildOpenAIErrorBody({ message, status }), jsonStatus);
-}
 
 app.onError((error, c) => {
 	if (error instanceof UnsupportedAudioFormatError) {
