@@ -140,6 +140,7 @@ export default [
 		ignores: [
 			"**/.tanstack/",
 			"**/.next/",
+			"**/next-env.d.ts",
 			"**/.next-dev/",
 			"**/.source/",
 			"**/.output/",
