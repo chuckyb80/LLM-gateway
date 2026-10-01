@@ -25,9 +25,15 @@ jobs:
     outputs:
       image_tag: ${{ steps.set-tag.outputs.IMAGE_TAG }}
       short_sha: ${{ steps.set-tag.outputs.SHORT_SHA }}
+      image_repo: ${{ steps.set-repo.outputs.IMAGE_REPO }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      # Image names must be lowercase; github.repository keeps the repo's casing.
+      - name: Set image repository
+        id: set-repo
+        run: echo "IMAGE_REPO=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
 
       - name: Set image tag
         id: set-tag
@@ -86,7 +92,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}-${{ matrix.app }}
+          images: ${{ needs.setup.outputs.image_repo }}-${{ matrix.app }}
 
       - name: Build and conditionally push by digest
         id: build
@@ -96,7 +102,7 @@ jobs:
           file: infra/split.dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ghcr.io/${{ github.repository }}-${{ matrix.app }}
+          tags: ${{ needs.setup.outputs.image_repo }}-${{ matrix.app }}
           target: ${{ matrix.app }}
           outputs: ${{ github.event_name == 'pull_request' && 'type=image,push=false,load=true' || 'type=image,push-by-digest=true,name-canonical=true,push=true' }}
           cache-from: type=gha,scope=${{ matrix.app }}-${{ env.PLATFORM_PAIR }}
@@ -154,7 +160,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}-${{ matrix.app }}
+          images: ${{ needs.setup.outputs.image_repo }}-${{ matrix.app }}
           tags: |
             type=raw,value=${{ needs.setup.outputs.image_tag }}
             type=raw,value=latest
@@ -163,11 +169,11 @@ jobs:
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'ghcr.io/${{ github.repository }}-${{ matrix.app }}@sha256:%s ' *)
+            $(printf '${{ needs.setup.outputs.image_repo }}-${{ matrix.app }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ghcr.io/${{ github.repository }}-${{ matrix.app }}:${{ needs.setup.outputs.image_tag }}
+          docker buildx imagetools inspect ${{ needs.setup.outputs.image_repo }}-${{ matrix.app }}:${{ needs.setup.outputs.image_tag }}
 
   test-split:
     runs-on: ubuntu-latest
@@ -225,7 +231,7 @@ jobs:
               -f infra/split.dockerfile \
               --target $app \
               --build-arg APP_VERSION=${{ github.event_name == 'pull_request' && 'pr-test' || needs.setup.outputs.image_tag }} \
-              -t ghcr.io/${{ github.repository }}-$app:${{ github.event_name == 'pull_request' && 'pr-test' || needs.setup.outputs.image_tag }} \
+              -t ${{ needs.setup.outputs.image_repo }}-$app:${{ github.event_name == 'pull_request' && 'pr-test' || needs.setup.outputs.image_tag }} \
               .
 
             # Clean up intermediate build layers to free space
@@ -238,7 +244,7 @@ jobs:
       - name: Test split Docker images
         run: |
           chmod +x .github/test-split-docker.sh
-          .github/test-split-docker.sh ghcr.io/${{ github.repository }} ${{ github.event_name == 'pull_request' && 'pr-test' || needs.setup.outputs.image_tag }}
+          .github/test-split-docker.sh ${{ needs.setup.outputs.image_repo }} ${{ github.event_name == 'pull_request' && 'pr-test' || needs.setup.outputs.image_tag }}
 
   build-unified:
     needs: setup
@@ -277,7 +283,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}-unified
+          images: ${{ needs.setup.outputs.image_repo }}-unified
 
       - name: Build and conditionally push by digest
         id: build
@@ -287,7 +293,7 @@ jobs:
           file: infra/unified.dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ghcr.io/${{ github.repository }}-unified
+          tags: ${{ needs.setup.outputs.image_repo }}-unified
           outputs: ${{ github.event_name == 'pull_request' && 'type=image,push=false,load=true' || 'type=image,push-by-digest=true,name-canonical=true,push=true' }}
           cache-from: type=gha,scope=unified-${{ env.PLATFORM_PAIR }}
           cache-to: type=gha,mode=max,scope=unified-${{ env.PLATFORM_PAIR }}
@@ -341,7 +347,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}-unified
+          images: ${{ needs.setup.outputs.image_repo }}-unified
           tags: |
             type=raw,value=${{ needs.setup.outputs.image_tag }}
             type=raw,value=latest
@@ -350,11 +356,11 @@ jobs:
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'ghcr.io/${{ github.repository }}-unified@sha256:%s ' *)
+            $(printf '${{ needs.setup.outputs.image_repo }}-unified@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ghcr.io/${{ github.repository }}-unified:${{ needs.setup.outputs.image_tag }}
+          docker buildx imagetools inspect ${{ needs.setup.outputs.image_repo }}-unified:${{ needs.setup.outputs.image_tag }}
 
   test-unified:
     runs-on: ubuntu-latest
